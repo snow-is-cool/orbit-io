@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Orbit.io - Endless Space</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow-x: hidden; background-color: #010103; font-family: 'Montserrat', sans-serif; touch-action: none; }
+        #gameCanvas { display: block; position: fixed; inset: 0; z-index: 1; }
+        .ui-layer { position: absolute; inset: 0; pointer-events: none; color: white; z-index: 10; }
+        .interactive { pointer-events: auto; }
+        #hud { position: fixed; bottom: 20px; left: 20px; font-size: 1.2rem; display: flex; flex-direction: column; gap: 10px; z-index: 20; }
+        #minimap { position: fixed; bottom: 20px; right: 20px; width: 150px; height: 150px; background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; z-index: 20; }
+        
+        /* Loading Screen Styles */
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            background: #010103;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s ease-out;
+            pointer-events: auto;
+        }
+        .loader-orbit {
+            width: 80px;
+            height: 80px;
+            border: 2px solid rgba(129, 140, 248, 0.2);
+            border-radius: 50%;
+            position: relative;
+            animation: spin 2s linear infinite;
+            margin-bottom: 2rem;
+        }
+        .loader-dot {
+            width: 12px;
+            height: 12px;
+            background: #818cf8;
+            border-radius: 50%;
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 15px #818cf8;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .zoom-controls { display: flex; gap: 8px; margin-top: 5px; }
+        .zoom-btn { 
+            background: rgba(255, 255, 255, 0.1); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            color: white; 
+            width: 44px; 
+            height: 44px; 
+            border-radius: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.5rem; 
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            user-select: none;
+        }
+        .zoom-btn:active { background: rgba(255, 255, 255, 0.3); }
+        .toggle-btn { font-size: 0.9rem; font-weight: bold; width: auto; padding: 0 12px; }
+
+        #self-destruct {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            color: #ef4444;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 5px;
+        }
+        #self-destruct:hover { background: rgba(239, 68, 68, 0.4); }
+
+        #purge-orbit {
+            background: rgba(249, 115, 22, 0.2);
+            border: 1px solid rgba(249, 115, 22, 0.5);
+            color: #f97316;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 5px;
+        }
+        #purge-orbit:hover { background: rgba(249, 115, 22, 0.4); }
+
+        #mobile-burst {
+            background: rgba(129, 140, 248, 0.4);
+            border: 2px solid #818cf8;
+            color: white;
+            padding: 15px;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            font-weight: bold;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        #mobile-burst:disabled { opacity: 0.3; border-color: gray; color: gray; }
+
+        #leaderboard { 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            background: rgba(0, 0, 0, 0.6); 
+            border-radius: 12px; 
+            backdrop-filter: blur(8px); 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 44px;
+            height: 44px;
+            overflow: hidden;
+            z-index: 20;
+        }
+        #leaderboard.expanded { width: 240px; height: auto; }
+        #leaderboard-header { padding: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; height: 44px; color: #818cf8; transition: all 0.3s; }
+        #leaderboard.expanded #leaderboard-header { justify-content: space-between; padding: 10px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+        #leaderboard-content { opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+        #leaderboard.expanded #leaderboard-content { opacity: 1; pointer-events: auto; padding-bottom: 10px; }
+        .lb-tabs { display: flex; background: rgba(255,255,255,0.05); margin-bottom: 10px; }
+        .lb-tab { flex: 1; padding: 8px; text-align: center; font-size: 10px; text-transform: uppercase; cursor: pointer; color: rgba(255,255,255,0.4); border-bottom: 2px solid transparent; }
+        .lb-tab.active { color: #818cf8; border-bottom-color: #818cf8; background: rgba(129, 140, 248, 0.1); }
+
+        #menu-overlay { 
+            position: absolute; 
+            inset: 0; 
+            background: radial-gradient(circle, rgba(10,10,20,0.85) 0%, rgba(0,0,0,0.95) 100%); 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: flex-start; 
+            z-index: 100; 
+            transition: opacity 0.5s ease; 
+            overflow-y: auto;
+            padding: 50px 0;
+            pointer-events: auto;
+        }
+        .card { position: relative; background: #0a0a0f; border: 1px solid #1e1e2e; padding: 2rem; border-radius: 1.5rem; text-align: center; max-width: 440px; width: 90%; box-shadow: 0 0 40px rgba(99, 102, 241, 0.2); margin-bottom: 50px; }
+        
+        .server-dropdown-container { 
+            display: flex; 
+            position: relative; 
+            width: 100%; 
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); 
+            border: 2px solid rgba(129, 140, 248, 0.3);
+            border-radius: 2rem; 
+            overflow: hidden; 
+            transition: border-color 0.2s, transform 0.2s;
+        }
+        .server-dropdown-container:hover { filter: brightness(1.1); }
+        .server-dropdown-container:focus-within {
+            border-color: #818cf8;
+            transform: scale(1.02);
+        }
+
+        .btn-play { 
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); 
+            color: white; 
+            padding: 1rem 1.5rem; 
+            font-weight: 800; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            border: none; 
+            flex-grow: 1; 
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+        }
+        .btn-play:hover { filter: brightness(1.1); }
+        
+        .server-select-mini { 
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            padding: 0 20px; 
+            cursor: pointer; 
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-left: 2px solid rgba(129, 140, 248, 0.2);
+            transition: background 0.2s;
+        }
+        .server-select-mini:hover { filter: brightness(1.1); }
+        
+        #serverSelect {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 70px;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 5;
+        }
+        
+        #serverSelect option {
+            background-color: #0a0a0f;
+            color: white;
+            padding: 15px;
+        }
+
+        .planet-selector { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 0.5rem; }
+        .planet-preview { width: 80px; height: 80px; border-radius: 50%; background-size: cover; background-position: center; border: 2px solid rgba(255,255,255,0.1); }
+        .planet-name { font-size: 0.9rem; color: #818cf8; font-weight: bold; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1em; }
+        .nav-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
+        input[type="text"] { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 2rem; color: white; width: 100%; margin-bottom: 1.5rem; text-align: center; outline: none; transition: border-color 0.2s; }
+        input[type="text"]:focus { border-color: #818cf8; }
+        
+        .toggle-container { margin: 10px 0; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+        .toggle-switch { width: 40px; height: 20px; background: #1e293b; border-radius: 20px; position: relative; cursor: pointer; border: 1px solid #334155; }
+        .toggle-switch.active { background: #6366f1; }
+        .toggle-knob { width: 16px; height: 16px; background: white; border-radius: 50%; position: absolute; top: 1px; left: 1px; transition: 0.2s; }
+        .toggle-switch.active .toggle-knob { left: 21px; }
+
+        .how-to-play { max-width: 600px; width: 90%; color: #94a3b8; line-height: 1.6; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 1.5rem; padding: 2rem; }
+        .how-to-play h2 { color: #818cf8; font-weight: bold; font-size: 1.5rem; margin-bottom: 1rem; }
+        .how-to-play ul { text-align: left; list-style: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+        .how-to-play li { margin-bottom: 0.5rem; }
+
+        #settings-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 320px;
+            background: #0a0a0f;
+            border: 1px solid #1e1e2e;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            z-index: 110;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+        #settings-panel.active {
+            display: flex;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+        .settings-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .settings-btn {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #818cf8;
+        }
+        .settings-btn:hover { background: rgba(129, 140, 248, 0.15); border-color: #818cf8; }
+        
+        .slider-group { width: 100%; margin-bottom: 1rem; text-align: left; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem; }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #1e293b;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #6366f1;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loader-orbit">
+            <div class="loader-dot"></div>
+        </div>
+        <div id="loading-status-text" class="text-indigo-400 font-bold tracking-widest text-lg mb-8 uppercase">INITIALIZING ORBIT...</div>
+        <div id="loading-tip" class="text-gray-500 text-sm max-w-xs text-center px-4 italic">
+            Gather small particles to grow your gravity well.
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="ui-layer">
+        <!-- Settings Panel -->
+        <div id="settings-panel" class="interactive">
+            <div class="settings-header">
+                <h2 class="text-xl font-bold text-indigo-400">SETTINGS</h2>
+                <button onclick="toggleSettings()" class="text-gray-500 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <div class="slider-group">
+                <div class="slider-label"><span>Music</span><span id="music-vol-txt">40%</span></div>
+                <input type="range" id="musicVolume" min="0" max="100" value="40" oninput="updateVolume('music', this.value)">
+            </div>
+
+            <div class="slider-group">
+                <div class="slider-label"><span>SFX</span><span id="sfx-vol-txt">60%</span></div>
+                <input type="range" id="sfxVolume" min="0" max="100" value="60" oninput="updateVolume('sfx', this.value)">
+            </div>
+
+            <hr class="w-full border-gray-800 my-4">
+
+            <div class="toggle-container">
+                <span class="text-xs">World Particles</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-[10px] uppercase tracking-tighter opacity-50">Stardust</span>
+                    <div id="asteroidToggle" class="toggle-switch" onclick="toggleAsteroids()">
+                        <div class="toggle-knob"></div>
+                    </div>
+                    <span class="text-[10px] uppercase tracking-tighter opacity-50">Asteroids</span>
+                </div>
+            </div>
+
+            <button class="btn-play rounded-xl py-2 text-sm mt-4" onclick="toggleSettings()">BACK TO MENU</button>
+        </div>
+
+        <div id="menu-overlay" class="interactive">
+            <div class="card">
+                <button class="settings-btn" onclick="toggleSettings()" title="Settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </button>
+
+                <h1 id="menu-title" class="text-5xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">ORBIT.IO</h1>
+                <div class="planet-selector">
+                    <button class="nav-btn" onclick="changePlanet(-1)">←</button>
+                    <div id="planet-preview-img" class="planet-preview"></div>
+                    <button class="nav-btn" onclick="changePlanet(1)">→</button>
+                </div>
+                <div id="planet-display-name" class="planet-name">Earth</div>
+                <input type="text" id="playerName" placeholder="Captain Name" maxlength="15">
+                
+                <div class="server-dropdown-container">
+                    <button class="btn-play" onclick="handlePlayClick()">
+                        <span id="play-button-text">ENTER ORBIT</span>
+                        </button>
+                    <div class="server-select-mini">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                        <select id="serverSelect">
+                            <option value="tiny">Tiny (5k Units) - Fast Paced</option>
+                            <option value="small" selected>Small (10k Units) - Competitive</option>
+                            <option value="medium">Medium (25k Units) - Balanced</option>
+                            <option value="large">Large (50k Units) - Default</option>
+                            <option value="huge">Huge (75k Units) - Massive</option>
+                            <option value="massive">Massive (100k Units) - Infinite</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-6 uppercase tracking-widest font-semibold">Grow your mass to dominate the galaxy</p>
+            </div>
+
+            <div class="how-to-play">
+                <h2>HOW TO PLAY</h2>
+                <ul>
+                    <li>Move your mouse to guide your planet through space.</li>
+                    <li>Absorb smaller particles and stardust to increase your mass.</li>
+                    <li><strong>Gravity Capture:</strong> If you are less than 1% of another planet's mass, you will be caught in its orbit and consumed!</li>
+                    <li>Avoid larger planets that can shatter you on contact.</li>
+                    <li>Hold left click (or Burst button on mobile) to eject mass and gain a small speed boost. <strong>Requires 5 items in orbit.</strong></li>
+                    <li>Scroll or use +/- buttons to zoom your cosmic view.</li>
+                </ul>
+                <div class="text-center text-xs italic">Scroll up to return to the play menu</div>
+            </div>
+        </div>
+
+        <div id="hud" style="display:none">
+            <div id="server-label" class="text-indigo-400 font-bold">Endless Mode</div>
+            <div>Mass: <span id="mass-val" class="font-mono text-indigo-300">0</span></div>
+            <div id="orbit-status" class="text-xs text-gray-400">In Gravity Well: <span id="orbit-count" class="text-white">0</span></div>
+            
+            <div class="flex flex-col gap-2">
+                <div class="zoom-controls interactive">
+                    <button class="zoom-btn" onclick="manualZoom(1.5)">+</button>
+                    <button class="zoom-btn" onclick="manualZoom(0.5)">-</button>
+                    <button id="toggle-names-btn" class="zoom-btn toggle-btn" onclick="toggleNames()">NAMES ON</button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="purge-orbit" class="interactive flex-1" onclick="triggerPurgeOrbit()">Purge Orbit</button>
+                    <button id="self-destruct" class="interactive flex-1" onclick="triggerSelfDestruct()">Self Destruct</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="minimap" style="display:none"><canvas id="minimapCanvas"></canvas></div>
+
+        <div id="leaderboard" class="interactive" style="display:none">
+            <div id="leaderboard-header" onclick="toggleLeaderboard()">
+                <span id="lb-title-text" class="hidden">Rankings</span>
+                <span id="lb-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0011 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 003.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>
+                </span>
+            </div>
+            <div id="leaderboard-content">
+                <div class="lb-tabs">
+                    <div id="tab-top" class="lb-tab active" onclick="setLeaderboardTab('top')">Top 5</div>
+                    <div id="tab-near" class="lb-tab" onclick="setLeaderboardTab('near')">Near You</div>
+                </div>
+                <div id="leaderboard-list" class="text-sm space-y-2 px-4"></div>
+            </div>
+        </div>
+
+        <div id="mobile-controls" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 50; display: none;">
+            <button id="mobile-burst" class="interactive">BURST</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const mCanvas = document.getElementById('minimapCanvas');
+        const mCtx = mCanvas.getContext('2d');
+
+        function updateButtonText() {
+            const select = document.getElementById('serverSelect');
+            const buttonText = document.getElementById('play-button-text');
+            const selectedText = select.options[select.selectedIndex].text.split(' (')[0];
+            buttonText.innerText = `ENTER ORBIT (${selectedText.toUpperCase()})`;
+        }
+
+        document.getElementById('serverSelect').addEventListener('change', updateButtonText);
+        updateButtonText();
+        
+        const GAME_TIPS = [
+            "Gather small particles to grow your gravity well.",
+            "Avoid planets larger than you—they will shatter you!",
+            "Ejecting mass gives you a speed boost to escape threats.",
+            "You can only capture other players in orbit if you are 10x their mass.",
+            "The map is circular! Watch the edges. You don't want to get cornered!",
+            "IO looks like the Russian letter Ю!",
+            "Ωeлкuм ту DAЛЬΦAКAAꝚ!",
+            "I enjoy math.",
+            "ERROR: UNEXPECTED STRING",
+            "Made with ✨Google Gemini✨",
+            "Tiny servers are perfect for fast-paced, aggressive play.",
+            "Beware, AI is getting smarter.",
+            "RUN!!!",
+            "If you enter the gravity well of someone ten times larger than you, you will be captured!"
+        ];
+
+        const bgMusic = new Audio('https://github.com/snow-is-cool/orbit-io/raw/refs/heads/main/space-track-1.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.4;
+        bgMusic.preload = 'auto';
+
+        const thumpSfx = new Audio('https://github.com/snow-is-cool/orbit-io/raw/refs/heads/main/space-thump.mp3');
+        const shatterSfx = new Audio('https://github.com/snow-is-cool/orbit-io/raw/refs/heads/main/space-shatter.mp3');
+        const ui1Sfx = new Audio('https://github.com/snow-is-cool/orbit-io/raw/refs/heads/main/ui-1.mp3');
+        const ui2Sfx = new Audio('https://github.com/snow-is-cool/orbit-io/raw/refs/heads/main/ui-2.mp3');
+
+        let camera = { x: 0, y: 0, zoom: 0.8, targetZoom: 0.8, manualZoomFactor: 1.0 };
+        let sfxVol = 0.6;
+
+        function updateVolume(type, val) {
+            const normalized = val / 100;
+            if (type === 'music') {
+                bgMusic.volume = normalized;
+                document.getElementById('music-vol-txt').innerText = val + '%';
+            } else {
+                sfxVol = normalized;
+                document.getElementById('sfx-vol-txt').innerText = val + '%';
+            }
+        }
+
+        function playSpatialSound(audioNode, x, y, baseVolume) {
+            const dx = x - camera.x;
+            const dy = y - camera.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const maxRange = 5000;
+            let volume = (baseVolume * sfxVol) * Math.max(0, 1 - (dist / maxRange));
+            if (volume > 0.01) {
+                const sound = audioNode.cloneNode();
+                sound.volume = Math.min(volume, 1.0);
+                sound.play().catch(() => {});
+            }
+        }
+
+        function playUiClick() {
+            const sound = (Math.random() > 0.5 ? ui1Sfx : ui2Sfx).cloneNode();
+            sound.volume = 0.4 * sfxVol;
+            sound.play().catch(() => {});
+        }
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('select')) {
+                playUiClick();
+            }
+        });
+
+        const Perlin = {
+            p: new Uint8Array(512),
+            init() {
+                const permutation = new Uint8Array(256);
+                for (let i = 0; i < 256; i++) permutation[i] = i;
+                for (let i = 255; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [permutation[i], permutation[j]] = [permutation[j], permutation[i]];
+                }
+                for (let i = 0; i < 512; i++) this.p[i] = permutation[i & 255];
+            },
+            fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); },
+            lerp(t, a, b) { return a + t * (b - a); },
+            grad(hash, x, y) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 4 ? y : h === 12 || h === 14 ? x : 0;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            },
+            noise(x, y) {
+                const X = Math.floor(x) & 255;
+                const Y = Math.floor(y) & 255;
+                x -= Math.floor(x);
+                y -= Math.floor(y);
+                const u = this.fade(x);
+                const v = this.fade(y);
+                const A = this.p[X] + Y, AA = this.p[A], AB = this.p[A + 1];
+                const B = this.p[X + 1] + Y, BA = this.p[B], BB = this.p[B + 1];
+                return this.lerp(v, this.lerp(u, this.grad(this.p[AA], x, y), this.grad(this.p[BA], x - 1, y)),
+                    this.lerp(u, this.grad(this.p[AB], x, y - 1), this.grad(this.p[BB], x - 1, y - 1)));
+            }
+        };
+        Perlin.init();
+
+        let MAP_RADIUS = 10000;
+        let FOOD_COUNT = 15000; 
+        let BOT_COUNT = 59;
+        const INITIAL_MASS = 100;
+        const BURST_REQUIREMENT = 5;
+        const DEATH_DURATION_FRAMES = 120;
+
+        const NAMES_DATA = {
+            prefixes: ["Silky", "Funky", "Gloomy", "Shiny", "Angry", "Lazy", "Super", "Mega", "Tiny", "Giant", "Golden", "Silver", "Neon", "Cosmic", "Solar", "Lunar", "Astro", "Nova", "Cyber", "Void", "Crunchy", "Wobbly", "Salty", "Spicy", "Jazzy", "Sleepy", "Wild", "Noble", "Plastic", "Digital"],
+            suffixes: ["Star", "Dust", "Planet", "Void", "Drifter", "Knight", "Ghost", "Storm", "Gazer", "Walker", "Cat", "Pizza", "Toaster", "Banana", "Robot", "Cactus", "Muffin", "Panda", "Ninja", "Wizard", "Cookie", "Potato", "Lemon", "Turtle", "Dolphin", "Oven", "Chair", "Cloud", "Rain", "Music"]
+        };
+
+        const SOLAR_SYSTEM = [
+            { name: "Mercury", url: "https://upload.wikimedia.org/wikipedia/commons/4/4a/Mercury_in_true_color.jpg" },
+            { name: "Venus", url: "https://upload.wikimedia.org/wikipedia/commons/0/08/Venus_from_Mariner_10.jpg" },
+            { name: "Earth", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/The_Blue_Marble_%28remastered%29.jpg/600px-The_Blue_Marble_%28remastered%29.jpg" },
+            { name: "Mars", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/OSIRIS_Mars_true_color.jpg/600px-OSIRIS_Mars_true_color.jpg" },
+            { name: "Jupiter", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/600px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg" },
+            { name: "Saturn", url: "https://i.redd.it/rfgt0nl1kv731.jpg" },
+            { name: "Uranus", url: "https://upload.wikimedia.org/wikipedia/commons/3/3d/Uranus2.jpg" },
+            { name: "Neptune", url: "https://upload.wikimedia.org/wikipedia/commons/0/06/Neptune.jpg" },
+            { name: "Pluto", url: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Pluto_in_True_Color_-_High-Res.png/960px-Pluto_in_True_Color_-_High-Res.png" }
+        ];
+
+        let isPlaying = false;
+        let isDead = false;
+        let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let deathTimer = 0;
+        let useAsteroids = false;
+        let showNames = true;
+        let mouse = { x: 0, y: 0, down: false };
+        let mobileBurstDown = false;
+        let player = null;
+        let entities = [];
+        let food = [];
+        let particles = []; 
+        let textures = [];
+        let stars = [];
+        let selectedPlanetIdx = 2;
+        let currentLbTab = 'top';
+        let frameCount = 0;
+
+        function formatMass(num) {
+            if (num < 1000) return Math.floor(num).toString();
+            const units = ["k", "m", "b", "t"];
+            for (let i = units.length - 1; i >= 0; i--) {
+                const decimal = Math.pow(1000, i + 1);
+                if (num >= decimal) return (num / decimal).toFixed(1) + units[i];
+            }
+            return Math.floor(num).toLocaleString();
+        }
+
+        function init() {
+            resize();
+            setInterval(() => {
+                const tipEl = document.getElementById('loading-tip');
+                tipEl.style.opacity = 0;
+                setTimeout(() => {
+                    tipEl.innerText = GAME_TIPS[Math.floor(Math.random() * GAME_TIPS.length)];
+                    tipEl.style.opacity = 1;
+                }, 400);
+            }, 5000);
+
+            let loadedTextures = 0;
+            SOLAR_SYSTEM.forEach((p, idx) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.src = p.url;
+                img.onload = () => { 
+                    img.isLoaded = true; 
+                    loadedTextures++;
+                    if(idx === selectedPlanetIdx) updatePreview(); 
+                    if(loadedTextures === SOLAR_SYSTEM.length) {
+                        setTimeout(() => {
+                            const screen = document.getElementById('loading-screen');
+                            screen.style.opacity = '0';
+                            setTimeout(() => { screen.style.display = 'none'; }, 500);
+                        }, 1200);
+                    }
+                };
+                textures.push(img);
+            });
+
+            for(let i=0; i<400; i++) {
+                stars.push({
+                    x: Math.random() * 4000,
+                    y: Math.random() * 4000,
+                    size: Math.random() * 1.5 + 0.5,
+                    layer: Math.random() * 0.35 + 0.05, 
+                    opacity: Math.random() * 0.2 + 0.05
+                });
+            }
+
+            window.addEventListener('resize', resize);
+            window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+            window.addEventListener('mousedown', (e) => { if (!e.target.closest('.interactive')) mouse.down = true; });
+            window.addEventListener('mouseup', () => mouse.down = false);
+            
+            const burstBtn = document.getElementById('mobile-burst');
+            burstBtn.addEventListener('touchstart', (e) => { mobileBurstDown = true; e.preventDefault(); }, { passive: false });
+            burstBtn.addEventListener('touchend', (e) => { mobileBurstDown = false; e.preventDefault(); }, { passive: false });
+
+            window.addEventListener('touchstart', (e) => { 
+                if (!e.target.closest('.interactive')) {
+                    mouse.down = true; 
+                    mouse.x = e.touches[0].clientX; 
+                    mouse.y = e.touches[0].clientY; 
+                }
+            }, { passive: false });
+            window.addEventListener('touchmove', (e) => {
+                if (mouse.down) { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; }
+            }, { passive: false });
+            window.addEventListener('touchend', () => mouse.down = false);
+            
+            window.addEventListener('wheel', (e) => {
+                if (!isPlaying && !isDead) return;
+                if (e.deltaY > 0) camera.manualZoomFactor *= 0.9;
+                else camera.manualZoomFactor *= 1.1;
+                clampManualZoom();
+            }, { passive: true });
+
+            if (isMobile) {
+                document.getElementById('mobile-controls').style.display = 'block';
+                document.getElementById('mobile-burst').style.display = 'flex';
+            }
+
+            updatePreview();
+            gameLoop();
+        }
+
+        function clampManualZoom() { camera.manualZoomFactor = Math.min(Math.max(camera.manualZoomFactor, 0.0001), 10.0); }
+        function manualZoom(factor) { camera.manualZoomFactor *= factor; clampManualZoom(); }
+        function toggleNames() {
+            showNames = !showNames;
+            const btn = document.getElementById('toggle-names-btn');
+            btn.innerText = showNames ? "NAMES ON" : "NAMES OFF";
+            btn.style.color = showNames ? "white" : "#6b7280";
+        }
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            mCanvas.width = 150; mCanvas.height = 150;
+        }
+        function changePlanet(dir) { selectedPlanetIdx = (selectedPlanetIdx + dir + SOLAR_SYSTEM.length) % SOLAR_SYSTEM.length; updatePreview(); }
+        function toggleAsteroids() { useAsteroids = !useAsteroids; document.getElementById('asteroidToggle').classList.toggle('active', useAsteroids); }
+        function toggleSettings() { document.getElementById('settings-panel').classList.toggle('active'); }
+        function toggleLeaderboard() {
+            const lb = document.getElementById('leaderboard');
+            const titleText = document.getElementById('lb-title-text');
+            const isExpanding = !lb.classList.contains('expanded');
+            lb.classList.toggle('expanded');
+            titleText.classList.toggle('hidden', !isExpanding);
+        }
+        function setLeaderboardTab(tab) {
+            currentLbTab = tab;
+            document.getElementById('tab-top').classList.toggle('active', tab === 'top');
+            document.getElementById('tab-near').classList.toggle('active', tab === 'near');
+            updateLeaderboard();
+        }
+        function updatePreview() {
+            document.getElementById('planet-preview-img').style.backgroundImage = `url(${SOLAR_SYSTEM[selectedPlanetIdx].url})`;
+            document.getElementById('planet-display-name').innerText = SOLAR_SYSTEM[selectedPlanetIdx].name;
+        }
+
+        function getVisualRadius(mass) { 
+            const m = 163.33;
+            const b = -316.66;
+            return Math.max(10, m * Math.log10(Math.max(100, mass)) + b);
+        }
+        function getGravityRadius(visualRadius) { return visualRadius * 7.5; }
+        
+        function getRandomMapPos() {
+            const angle = Math.random() * Math.PI * 2;
+            const r = Math.sqrt(Math.random()) * (MAP_RADIUS - 1000);
+            return { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
+        }
+
+        function getNoisyMapPos() {
+            let attempts = 0;
+            const MAX_ATTEMPTS = 2;
+            while (attempts < MAX_ATTEMPTS) {
+                const pos = getRandomMapPos();
+                const nRaw = Perlin.noise(pos.x / 12000, pos.y / 12000);
+                const n = (nRaw + 1) / 2;
+                const spawnChance = 0.1 + (n * 0.9);
+                if (Math.random() < spawnChance) return pos;
+                attempts++;
+            }
+            return getRandomMapPos();
+        }
+
+        function generateProceduralName() {
+            const pre = NAMES_DATA.prefixes[Math.floor(Math.random() * NAMES_DATA.prefixes.length)];
+            const suf = NAMES_DATA.suffixes[Math.floor(Math.random() * NAMES_DATA.suffixes.length)];
+            var num = Math.floor(Math.random()*(100-1)+1)
+            if (num == 0) {num = 1}
+             if (num == 100) {num = 99}
+            if (Math.random() <= 0.5) { 
+            return pre + suf + num;
+            }
+            else {
+            return pre + suf;
+        }
+    }
+
+        async function handlePlayClick() {
+            const screen = document.getElementById('loading-screen');
+            const statusText = document.getElementById('loading-status-text');
+            statusText.innerText = "Connecting to Server...";
+            screen.style.display = 'flex';
+            screen.style.opacity = '1';
+            await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random()*(4000-1500)+1500)));
+            startGame();
+            screen.style.opacity = '0';
+            setTimeout(() => { screen.style.display = 'none'; }, 500);
+        }
+
+        function startGame() {
+            const serverType = document.getElementById('serverSelect').value;
+            let displayServer = "Small Server";
+            let densityMultiplier = 1.0;
+            
+            switch(serverType) {
+                case 'tiny':
+                    MAP_RADIUS = 5000; BOT_COUNT = 39; displayServer = "Tiny Server"; densityMultiplier = 2.5; break;
+                case 'small':
+                    MAP_RADIUS = 10000; BOT_COUNT = 59; displayServer = "Small Server"; densityMultiplier = 2.5; break;
+                case 'medium':
+                    MAP_RADIUS = 25000; BOT_COUNT = 79; displayServer = "Medium Server"; densityMultiplier = 1.4; break;
+                case 'huge':
+                    MAP_RADIUS = 75000; BOT_COUNT = 79; displayServer = "Huge Server"; densityMultiplier = 0.9; break;
+                case 'massive':
+                    MAP_RADIUS = 100000; BOT_COUNT = 79; displayServer = "Massive Server"; densityMultiplier = 0.8; break;
+                default:
+                    MAP_RADIUS = 10000; BOT_COUNT = 59; displayServer = "Medium Server"; densityMultiplier = 2.5;
+            }
+
+            const baselineArea = 50000 * 50000;
+            const currentArea = MAP_RADIUS * MAP_RADIUS;
+            FOOD_COUNT = Math.floor(15000 * (currentArea / baselineArea) * densityMultiplier);
+
+            food = []; entities = []; particles = [];
+            bgMusic.play().catch(e => console.warn("Music play blocked:", e));
+            const overlay = document.getElementById('menu-overlay');
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
+            overlay.scrollTo(0,0);
+            
+            document.getElementById('hud').style.display = 'flex';
+            document.getElementById('minimap').style.display = 'block';
+            document.getElementById('leaderboard').style.display = 'block';
+            document.getElementById('server-label').innerText = displayServer;
+            document.getElementById('menu-title').innerText = "ORBIT.IO";
+            document.getElementById('menu-title').style.color = "";
+            
+            const nameInput = document.getElementById('playerName').value.trim();
+            const name = nameInput || generateProceduralName();
+            const startPos = getRandomMapPos();
+            
+            player = createEntity(name, startPos.x, startPos.y, INITIAL_MASS, true);
+            player.texture = textures[selectedPlanetIdx];
+            entities.push(player);
+            
+            populateBots();
+            for(let i=0; i<FOOD_COUNT; i++) spawnFood();
+
+            isPlaying = true;
+            isDead = false;
+            camera.manualZoomFactor = 1.0;
+        }
+
+        function populateBots() {
+            while(entities.length < BOT_COUNT + (player && !player.toBeRemoved ? 1 : 0)) {
+                const bName = generateProceduralName();
+                const pos = getRandomMapPos();
+                entities.push(createEntity(bName, pos.x, pos.y, 100, false));
+            }
+        }
+
+        function createEntity(name, x, y, mass, isPlayer) {
+            const tIdx = Math.floor(Math.random()*textures.length);
+            return {
+                id: Math.random(),
+                name: name,
+                x, y, mass, vx: 0, vy: 0, radius: getVisualRadius(mass),
+                texture: textures[tIdx], color: `hsl(${Math.random()*360}, 50%, 50%)`,
+                isPlayer, rotation: Math.random()*Math.PI*2,
+                cooldown: 0,
+                fleeingFrom: null,
+                niceness: Math.random(), 
+                targetCluster: null,
+                capturedBy: null,
+                orbitAngle: 0,
+                orbitDist: 0,
+                toBeRemoved: false,
+                uncollectableBy: null,
+                trail: [], 
+                isBurstingNow: false
+            };
+        }
+
+        function spawnFood(x, y, vx, vy, color, mass, originId) {
+            const pos = (x === undefined) ? getNoisyMapPos() : { x, y };
+            const baseMass = mass ?? 10;
+            const foodColor = useAsteroids ? `hsl(0, 0%, ${40 + Math.random() * 30}%)` : (color ?? `hsl(${Math.random()*360}, 70%, 70%)`);
+            food.push({
+                x: pos.x, y: pos.y,
+                vx: vx ?? (Math.random()-0.5)*1.5,
+                vy: vy ?? (Math.random()-0.5)*1.5,
+                mass: baseMass, color: foodColor,
+                originId: originId ?? null,
+                uncollectableBy: null, 
+                capturedBy: null,
+                orbitAngle: Math.random()*Math.PI*2,
+                orbitDist: 0,
+                toBeRemoved: false
+            });
+        }
+
+        function spawnExplosion(x, y, color, vx, vy, count = 15) {
+            const particleColor = useAsteroids ? '#888' : color;
+            for(let i=0; i<count; i++) {
+                particles.push({
+                    x, y, 
+                    vx: vx + (Math.random()-0.5)*15, 
+                    vy: vy + (Math.random()-0.5)*15,
+                    life: 1.0, color: particleColor, size: (Math.random()*6 + 2)
+                });
+            }
+        }
+
+        function shatterEntity(ent) {
+            playSpatialSound(shatterSfx, ent.x, ent.y, 0.6); 
+            const particleCount = 15; 
+            const orbMass = ent.mass / particleCount;
+            const color = ent.color;
+            for(let i=0; i<particleCount; i++) {
+                const angle = (i / particleCount) * Math.PI * 2;
+                const speed = 15 + Math.random() * 10;
+                const px = ent.x + Math.cos(angle) * (ent.radius * 0.5);
+                const py = ent.y + Math.sin(angle) * (ent.radius * 0.5);
+                spawnFood(px, py, Math.cos(angle) * speed, Math.sin(angle) * speed, color, orbMass);
+            }
+            spawnExplosion(ent.x, ent.y, ent.color, ent.vx, ent.vy, 50);
+        }
+
+        function triggerSelfDestruct() {
+            if (player && !isDead) {
+                shatterEntity(player);
+                player.toBeRemoved = true; 
+                triggerGameOver("Self Destructed");
+            }
+        }
+
+        function triggerPurgeOrbit() {
+            if (!player || isDead) return;
+            handleMassEjection(false, 0, 0, true);
+        }
+
+        function screenToWorld(sx, sy) {
+            return {
+                x: (sx - canvas.width / 2) / camera.zoom + camera.x,
+                y: (sy - canvas.height / 2) / camera.zoom + camera.y
+            };
+        }
+
+        function handleMassEjection(isBot = false, botTx, botTy, purgeAll = false) {
+            const ent = isBot ? this : player;
+            if (!ent) return;
+            if (!purgeAll && ent.cooldown > 0) return;
+            const orbitalFood = food.filter(f => f.capturedBy === ent);
+            const orbitalPlanets = entities.filter(e => e.capturedBy === ent);
+            const totalInOrbit = orbitalFood.length + orbitalPlanets.length;
+            if (!purgeAll && totalInOrbit < BURST_REQUIREMENT) return;
+            const numToEject = purgeAll ? totalInOrbit : 5;
+            if (numToEject === 0) return;
+
+            ent.isBurstingNow = true;
+            let baseAngle;
+            if (ent.isPlayer) {
+                const mouseWorld = screenToWorld(mouse.x, mouse.y);
+                baseAngle = Math.atan2(mouseWorld.y - ent.y, mouseWorld.x - ent.x) + Math.PI;
+            } else {
+                baseAngle = Math.atan2(botTy, botTx);
+            }
+
+            const recoilForce = 7.0;
+            const ejectSpeedBase = 25;
+            let targets = [];
+            if (purgeAll) {
+                targets = [...orbitalFood, ...orbitalPlanets];
+            } else {
+                targets = orbitalFood.slice(0, numToEject);
+                if (targets.length < numToEject) targets = targets.concat(orbitalPlanets.slice(0, numToEject - targets.length));
+            }
+
+            targets.forEach(orb => {
+                const variation = (Math.random() - 0.5) * (purgeAll ? 2.0 : 1.0);
+                const ejectAngle = baseAngle + variation;
+                const speed = ejectSpeedBase + Math.random() * 10;
+                orb.capturedBy = null;
+                orb.uncollectableBy = ent.id; 
+                const ejectDist = getGravityRadius(ent.radius) + (orb.radius || 15) + 50;
+                orb.x = ent.x + Math.cos(ejectAngle) * ejectDist;
+                orb.y = ent.y + Math.sin(ejectAngle) * ejectDist;
+                if (!purgeAll) {
+                    orb.vx = Math.cos(ejectAngle) * speed;
+                    orb.vy = Math.sin(ejectAngle) * speed;
+                } else {
+                    orb.vx = (Math.random() - 0.5) * 5;
+                    orb.vy = (Math.random() - 0.5) * 5;
+                }
+                if (orb.mass === undefined) orb.originId = ent.id;
+                if (!purgeAll) {
+                    const forcePerItem = recoilForce / numToEject;
+                    ent.vx -= Math.cos(ejectAngle) * forcePerItem * 5; 
+                    ent.vy -= Math.sin(ejectAngle) * forcePerItem * 5;
+                }
+            });
+            if (!purgeAll) ent.cooldown = isBot ? 120 : 5;
+        }
+
+        function update() {
+            frameCount++;
+            if (isDead) {
+                deathTimer--;
+                particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.01; });
+                particles = particles.filter(p => p.life > 0);
+                if (deathTimer <= 0) {
+                    bgMusic.pause(); bgMusic.currentTime = 0;
+                    isPlaying = false;
+                    const ov = document.getElementById('menu-overlay');
+                    ov.style.display = 'flex'; ov.style.opacity = '1'; ov.style.pointerEvents = 'auto';
+                }
+                return;
+            }
+            if (!isPlaying) return;
+            
+            const isBurstingInput = isMobile ? mobileBurstDown : mouse.down;
+            if (isBurstingInput && player && !isDead) handleMassEjection();
+
+            entities.forEach(ent => {
+                if (ent.toBeRemoved) return;
+                if (ent.isBurstingNow) ent.trail.push({ x: ent.x, y: ent.y, life: 1.0 });
+                ent.isBurstingNow = false;
+                if (ent.trail.length > 20) ent.trail.shift();
+                ent.trail.forEach(t => t.life -= 0.08);
+                ent.trail = ent.trail.filter(t => t.life > 0);
+                
+                if (ent.uncollectableBy) {
+                    const host = entities.find(e => e.id === ent.uncollectableBy);
+                    if (!host || Math.sqrt((ent.x-host.x)**2 + (ent.y-host.y)**2) > getGravityRadius(host.radius)) ent.uncollectableBy = null;
+                }
+
+                for (let host of entities) {
+                    if (host === ent || host.toBeRemoved || ent.uncollectableBy === host.id) continue;
+                    if (ent.mass < host.mass * 0.1) {
+                        const dist = Math.sqrt((host.x - ent.x) ** 2 + (host.y - ent.y) ** 2);
+                        const gWell = getGravityRadius(host.radius);
+                        if (dist < gWell) {
+                            if (!ent.capturedBy || (ent.capturedBy.id !== host.id && host.mass > ent.capturedBy.mass * 1.1)) {
+                                ent.capturedBy = host;
+                                ent.orbitDist = dist;
+                                ent.orbitAngle = Math.atan2(ent.y - host.y, ent.x - host.x);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (ent.capturedBy) {
+                    if (!entities.includes(ent.capturedBy) || ent.capturedBy.toBeRemoved || ent.mass >= ent.capturedBy.mass * 0.1) {
+                        ent.capturedBy = null;
+                    } else {
+                        ent.orbitDist -= 2.0; ent.orbitAngle += 0.05;
+                        ent.x = ent.capturedBy.x + Math.cos(ent.orbitAngle) * ent.orbitDist;
+                        ent.y = ent.capturedBy.y + Math.sin(ent.orbitAngle) * ent.orbitDist;
+                        if (ent.orbitDist < ent.capturedBy.radius) {
+                            playSpatialSound(thumpSfx, ent.capturedBy.x, ent.capturedBy.y, 0.5); 
+                            ent.capturedBy.mass += ent.mass; ent.toBeRemoved = true;
+                            if (ent.isPlayer) triggerGameOver(ent.capturedBy.name);
+                        }
+                        return; 
+                    }
+                }
+
+                if(ent.cooldown > 0) ent.cooldown--;
+                ent.rotation += 0.005;
+
+                let tx, ty;
+                if (ent.isPlayer) {
+                    const mouseWorld = screenToWorld(mouse.x, mouse.y);
+                    tx = mouseWorld.x - ent.x; ty = mouseWorld.y - ent.y;
+                } else {
+                    let closestThreat = null, threatDist = Infinity, closestPrey = null, preyDist = Infinity;
+                    const detectionRange = getGravityRadius(ent.radius) * (3 + ent.niceness * 2);
+                    entities.forEach(other => {
+                        if (other.id === ent.id || other.toBeRemoved) return;
+                        const d = Math.sqrt((other.x - ent.x)**2 + (other.y - ent.y)**2);
+                        const runThreshold = getGravityRadius(other.radius) * (1.2 + ent.niceness);
+                        if (other.mass > ent.mass * 1.1 && d < runThreshold) {
+                            if (d < threatDist) { threatDist = d; closestThreat = other; }
+                        }
+                        if (ent.niceness < 0.6 && other.mass * 1.2 < ent.mass && d < detectionRange) {
+                            if (d < preyDist) { preyDist = d; closestPrey = other; }
+                        }
+                    });
+
+                    if (closestThreat) {
+                        ent.fleeingFrom = closestThreat.id; tx = ent.x - closestThreat.x; ty = ent.y - closestThreat.y;
+                        if (ent.cooldown === 0 && Math.random() < 0.05) handleMassEjection.call(ent, true, ty, tx);
+                    } else if (closestPrey) {
+                        ent.fleeingFrom = null; tx = closestPrey.x - ent.x; ty = closestPrey.y - ent.y;
+                        if (ent.cooldown === 0 && Math.random() < 0.03) handleMassEjection.call(ent, true, ty, tx);
+                    } else {
+                        ent.fleeingFrom = null;
+                        if (frameCount % 60 === 0 || !ent.targetCluster) {
+                            let bestCluster = null, maxWeight = -1;
+                            for(let i=0; i<20; i++) {
+                                const f = food[Math.floor(Math.random()*food.length)];
+                                if (!f) continue;
+                                const d = Math.sqrt((f.x-ent.x)**2 + (f.y-ent.y)**2);
+                                if (d < 3000) {
+                                    let weight = 1 / (d + 100);
+                                    if (weight > maxWeight) { maxWeight = weight; bestCluster = f; }
+                                }
+                            }
+                            ent.targetCluster = bestCluster;
+                        }
+                        if (ent.targetCluster) {
+                            tx = ent.targetCluster.x - ent.x; ty = ent.targetCluster.y - ent.y;
+                            if (ent.cooldown === 0 && Math.random() < 0.01 && Math.sqrt(tx*tx + ty*ty) > 500) handleMassEjection.call(ent, true, ty, tx);
+                            if (Math.sqrt(tx*tx + ty*ty) < 100) ent.targetCluster = null;
+                        } else {
+                            if (!ent.tx || Math.random() > 0.98) { ent.tx = (Math.random()-0.5)*4000; ent.ty = (Math.random()-0.5)*4000; }
+                            tx = ent.tx; ty = ent.ty;
+                        }
+                    }
+                }
+
+                const d = Math.sqrt(tx*tx + ty*ty);
+                const speedMod = ent.isPlayer ? 1.8 : (ent.fleeingFrom ? (1.5 + ent.niceness) : (0.8 + (1-ent.niceness)*0.5));
+                const maxS = (10 / (1 + Math.log10(Math.max(100, ent.mass)) * 0.3)) * speedMod;
+                if (d > 10) {
+                    ent.vx += (tx/d * maxS - ent.vx) * 0.05;
+                    ent.vy += (ty/d * maxS - ent.vy) * 0.05;
+                }
+                ent.x += ent.vx; ent.y += ent.vy;
+                ent.vx *= 0.97; ent.vy *= 0.97;
+                ent.radius = getVisualRadius(ent.mass);
+                if (Math.sqrt(ent.x*ent.x + ent.y*ent.y) + ent.radius > MAP_RADIUS) {
+                    const angle = Math.atan2(ent.y, ent.x);
+                    ent.x = Math.cos(angle) * (MAP_RADIUS - ent.radius);
+                    ent.y = Math.sin(angle) * (MAP_RADIUS - ent.radius);
+                    ent.vx *= -0.5; ent.vy *= -0.5;
+                }
+            });
+
+            food.forEach(f => {
+                if (f.uncollectableBy) {
+                    const host = entities.find(e => e.id === f.uncollectableBy);
+                    if (!host || Math.sqrt((f.x-host.x)**2 + (f.y-host.y)**2) > getGravityRadius(host.radius)) f.uncollectableBy = null;
+                }
+                for (let ent of entities) {
+                    if (ent.toBeRemoved || f.uncollectableBy === ent.id) continue;
+                    const dist = Math.sqrt((ent.x - f.x) ** 2 + (ent.y - f.y) ** 2);
+                    const gWell = getGravityRadius(ent.radius);
+                    if (dist < gWell) {
+                        if (!f.capturedBy || (f.capturedBy.id !== ent.id && ent.mass > f.capturedBy.mass * 1.1)) {
+                            f.capturedBy = ent; f.orbitDist = dist; f.orbitAngle = Math.atan2(f.y - ent.y, f.x - ent.x);
+                            break;
+                        }
+                    }
+                }
+                if (f.capturedBy) {
+                    if (!entities.includes(f.capturedBy) || f.capturedBy.toBeRemoved) { f.capturedBy = null; return; }
+                    f.orbitDist -= 2.0; f.orbitAngle += 0.05;
+                    f.x = f.capturedBy.x + Math.cos(f.orbitAngle) * f.orbitDist;
+                    f.y = f.capturedBy.y + Math.sin(f.orbitAngle) * f.orbitDist;
+                    if (f.orbitDist < f.capturedBy.radius) { 
+                        playSpatialSound(thumpSfx, f.capturedBy.x, f.capturedBy.y, 0.5); 
+                        f.capturedBy.mass += f.mass; f.toBeRemoved = true; 
+                    }
+                } else {
+                    f.x += f.vx; f.y += f.vy;
+                    f.vx *= 0.97; f.vy *= 0.97; 
+                    if (Math.sqrt(f.x*f.x + f.y*f.y) > MAP_RADIUS) {
+                        const angle = Math.atan2(f.y, f.x);
+                        f.x = Math.cos(angle) * MAP_RADIUS; f.y = Math.sin(angle) * MAP_RADIUS;
+                        f.vx *= -0.8; f.vy *= -0.8;
+                    }
+                }
+            });
+
+            for (let i = entities.length - 1; i >= 0; i--) {
+                const a = entities[i]; if (!a || a.toBeRemoved) continue;
+                for (let j = entities.length - 1; j >= 0; j--) {
+                    if (i === j) continue;
+                    const b = entities[j]; if (!b || b.toBeRemoved) continue;
+                    const dist = Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+                    if (dist < a.radius + b.radius * 0.4) {
+                        const bigger = a.mass >= b.mass ? a : b;
+                        const smaller = a.mass >= b.mass ? b : a;
+                        if (bigger.mass > smaller.mass * 1.05) {
+                            shatterEntity(smaller); smaller.toBeRemoved = true;
+                            if (smaller.isPlayer) triggerGameOver(bigger.name);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            entities = entities.filter(e => !e.toBeRemoved);
+            food = food.filter(f => !f.toBeRemoved);
+            
+            // FIX: Repopulate bots when they are destroyed
+            populateBots();
+
+            while(food.length < FOOD_COUNT) spawnFood();
+            particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; });
+            particles = particles.filter(p => p.life > 0);
+
+            if (player && !player.toBeRemoved) {
+                let baseZoom = 1.0 / (player.radius / 100 + 0.5);
+                camera.targetZoom = Math.max(0.0001, baseZoom * camera.manualZoomFactor); 
+                camera.zoom += (camera.targetZoom - camera.zoom) * 0.05;
+                const viewRadius = (canvas.width / 2) / camera.zoom;
+                const centeringThreshold = 1.5; 
+                let centerWeight = 0;
+                if ((viewRadius * 2) / (MAP_RADIUS * 2) > centeringThreshold) 
+                centerWeight = Math.min(1, ((viewRadius * 2) / (MAP_RADIUS *2) - centeringThreshold) / 0.15);
+                camera.x += (player.x * (1 - centerWeight) - camera.x) * 0.1;
+                camera.y += (player.y * (1 - centerWeight) - camera.y) * 0.1;
+                document.getElementById('mass-val').innerText = formatMass(player.mass);
+                const totalInWell = food.filter(f => f.capturedBy === player).length + entities.filter(e => e.capturedBy === player).length;
+                document.getElementById('orbit-count').innerText = totalInWell;
+                if (isMobile) document.getElementById('mobile-burst').disabled = (totalInWell < BURST_REQUIREMENT);
+            }
+            updateLeaderboard();
+        }
+
+        function triggerGameOver(killerName) {
+            if (isDead) return;
+            isDead = true; deathTimer = DEATH_DURATION_FRAMES; 
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('minimap').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('menu-title').innerText = killerName === "Self Destructed" ? "SHATTERED" : "SHATTERED BY " + killerName.toUpperCase();
+            document.getElementById('menu-title').style.color = "#ef4444";
+            if(player) player.toBeRemoved = true;
+        }
+
+        function updateLeaderboard() {
+            if (!isPlaying && !isDead) return;
+            const sorted = [...entities].sort((a,b) => b.mass - a.mass);
+            let displayList = [];
+            if (currentLbTab === 'top') {
+                displayList = sorted.slice(0, 5).map(e => ({ entity: e, rank: sorted.indexOf(e) + 1 }));
+            } else if (player) {
+                const pIdx = sorted.findIndex(e => e.id === player.id);
+                displayList = sorted.slice(Math.max(0, pIdx-2), pIdx+3).map(e => ({ entity: e, rank: sorted.indexOf(e) + 1 }));
+            }
+            document.getElementById('leaderboard-list').innerHTML = displayList.map(item => `
+                <div class="flex justify-between items-center ${item.entity.isPlayer ? 'text-indigo-400 font-extrabold border-l-2 border-indigo-500 pl-2 -ml-2' : 'text-gray-400'}">
+                    <span class="truncate pr-2 max-w-[140px]">${item.rank}. ${item.entity.name}</span>
+                    <span class="font-mono text-xs">${formatMass(item.entity.mass)}</span>
+                </div>
+            `).join('');
+        }
+
+        function draw() {
+            ctx.fillStyle = '#010103'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(star => {
+                const starSpaceSize = 4000;
+                let sx = (star.x - camera.x * star.layer) % starSpaceSize;
+                let sy = (star.y - camera.y * star.layer) % starSpaceSize;
+                if (sx < 0) sx += starSpaceSize;
+                if (sy < 0) sy += starSpaceSize;
+                const screenX = (sx / starSpaceSize) * canvas.width;
+                const screenY = (sy / starSpaceSize) * canvas.height;
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                ctx.fillRect(screenX, screenY, star.size, star.size);
+            });
+            ctx.save();
+            ctx.translate(canvas.width/2, canvas.height/2);
+            ctx.scale(camera.zoom, camera.zoom);
+            ctx.translate(-camera.x, -camera.y);
+            const buffer = 1000; 
+            const vL = camera.x - (canvas.width / 2) / camera.zoom;
+            const vR = camera.x + (canvas.width / 2) / camera.zoom;
+            const vT = camera.y - (canvas.height / 2) / camera.zoom;
+            const vB = camera.y + (canvas.height / 2) / camera.zoom;
+            ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 15 / camera.zoom; 
+            ctx.beginPath(); ctx.arc(0, 0, MAP_RADIUS, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,0.015)';
+            const step = 2000;
+            for(let x = -MAP_RADIUS; x <= MAP_RADIUS; x += step) if (x >= vL - buffer && x <= vR + buffer) { ctx.beginPath(); ctx.moveTo(x, -MAP_RADIUS); ctx.lineTo(x, MAP_RADIUS); ctx.stroke(); }
+            for(let y = -MAP_RADIUS; y <= MAP_RADIUS; y += step) if (y >= vT - buffer && y <= vB + buffer) { ctx.beginPath(); ctx.moveTo(-MAP_RADIUS, y); ctx.lineTo(MAP_RADIUS, y); ctx.stroke(); }
+            entities.forEach(ent => {
+                if (ent.trail.length < 2) return;
+                ctx.beginPath(); ctx.moveTo(ent.trail[0].x, ent.trail[0].y);
+                for(let i=1; i<ent.trail.length; i++) ctx.lineTo(ent.trail[i].x, ent.trail[i].y);
+                ctx.strokeStyle = ent.isPlayer ? `rgba(129, 140, 248, 0.5)` : `rgba(168, 85, 247, 0.2)`;
+                ctx.lineWidth = ent.radius * 0.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+            });
+            food.forEach(f => {
+                if (f.x < vL - buffer || f.x > vR + buffer || f.y < vT - buffer || f.y > vB + buffer) return;
+                ctx.fillStyle = f.color;
+                const visualSize = f.mass > 15 ? 45 : 25;
+                ctx.beginPath(); ctx.arc(f.x, f.y, visualSize, 0, Math.PI*2); ctx.fill();
+            });
+            particles.forEach(p => {
+                if (p.x < vL - buffer || p.x > vR + buffer || p.y < vT - buffer || p.y > vB + buffer) return;
+                ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size);
+            });
+            ctx.globalAlpha = 1;
+            entities.sort((a,b)=>a.mass-b.mass).forEach(ent => {
+                const gRadius = getGravityRadius(ent.radius);
+                if (ent.x < vL - gRadius - buffer || ent.x > vR + gRadius + buffer || ent.y < vT - gRadius - buffer || ent.y > vB + gRadius + buffer) return;
+                ctx.save();
+                ctx.translate(ent.x, ent.y);
+                ctx.strokeStyle = (ent.isPlayer ? 'rgba(129, 140, 248, 0.4)' : 'rgba(255,255,255,0.06)');
+                ctx.lineWidth = 4 / camera.zoom;
+                ctx.beginPath(); ctx.arc(0, 0, gRadius, 0, Math.PI*2); ctx.stroke();
+                ctx.save();
+                ctx.rotate(ent.rotation);
+                ctx.beginPath(); ctx.arc(0, 0, ent.radius, 0, Math.PI*2); ctx.clip();
+                if (ent.texture?.isLoaded) ctx.drawImage(ent.texture, -ent.radius, -ent.radius, ent.radius*2, ent.radius*2);
+                else { ctx.fillStyle = ent.color; ctx.fill(); }
+                const grad = ctx.createRadialGradient(-ent.radius*0.3, -ent.radius*0.3, 0, 0, 0, ent.radius);
+                grad.addColorStop(0, 'rgba(255,255,255,0.1)'); grad.addColorStop(1, 'rgba(0,0,0,0.6)');
+                ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, ent.radius, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+                if (showNames) {
+                    const labelSize = Math.max(12 / camera.zoom, ent.radius * 0.2);
+                    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.strokeStyle = 'black'; ctx.lineWidth = 5 / camera.zoom; ctx.lineJoin = 'round';
+                    ctx.font = `bold ${labelSize}px Montserrat`;
+                    let ic = 'white';
+                    if (ent.isPlayer) ic = '#a855f7'; 
+                    else if (player) {
+                        if (ent.mass > player.mass * 10) ic = '#ff0000'; 
+                        else if (ent.mass > player.mass) ic = '#f97316'; 
+                        else if (ent.mass < player.mass * 0.1) ic = '#22c55e'; 
+                    }
+                    ctx.strokeText(ent.name, 0, 0); ctx.fillStyle = ic; ctx.fillText(ent.name, 0, 0);
+                    const massText = formatMass(ent.mass);
+                    ctx.font = `bold ${labelSize * 0.7}px monospace`;
+                    ctx.strokeText(massText, 0, labelSize * 1.1); ctx.fillStyle = ic; ctx.fillText(massText, 0, labelSize * 1.1);
+                    ctx.restore();
+                }
+                ctx.restore();
+            });
+            ctx.restore();
+            mCtx.fillStyle = 'black'; mCtx.fillRect(0,0,150,150);
+            mCtx.strokeStyle = '#4f46e5'; mCtx.lineWidth = 2;
+            mCtx.beginPath(); mCtx.arc(75, 75, 70, 0, Math.PI*2); mCtx.stroke();
+            const s = 70 / MAP_RADIUS;
+            entities.forEach(e => {
+                let dc = 'rgba(255,255,255,0.6)';
+                if (e.isPlayer) dc = '#a855f7';
+                else if (player) {
+                    if (e.mass > player.mass) dc = '#f97316';
+                    if (e.mass > player.mass * 100) dc = '#ff0000';
+                    else if (e.mass < player.mass * 0.1) dc = '#22c55e';
+                }
+                mCtx.fillStyle = dc; mCtx.beginPath(); mCtx.arc(75 + e.x*s, 75 + e.y*s, 3, 0, Math.PI*2); mCtx.fill();
+            });
+        }
+        function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+        init();
+    </script>
+</body>
+</html>
