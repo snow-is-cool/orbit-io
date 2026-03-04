@@ -872,15 +872,15 @@
                 case 'tiny': MAP_RADIUS = 5000; BOT_COUNT = 39; displayServer = "Tiny Server"; densityMultiplier = 2.5; break;
                 case 'small': MAP_RADIUS = 10000; BOT_COUNT = 59; displayServer = "Small Server"; densityMultiplier = 2.5; break;
                 case 'medium': MAP_RADIUS = 25000; BOT_COUNT = 79; displayServer = "Medium Server"; densityMultiplier = 1.4; break;
+                case 'large': MAP_RADIUS = 50000; BOT_COUNT = 79; displayServer = "Large Server"; densityMultiplier = 1.2; break;
                 case 'huge': MAP_RADIUS = 75000; BOT_COUNT = 79; displayServer = "Huge Server"; densityMultiplier = 0.9; break;
                 case 'massive': MAP_RADIUS = 100000; BOT_COUNT = 79; displayServer = "Massive Server"; densityMultiplier = 0.8; break;
             }
+            // Explicitly reset duel flags every time we start a game
             isDuel = serverType === 'duel';
-            let isNotDuel = !isDuel;
-            if (isDuel) {
-                duelInactivityFrames = 0;
-                duelMapShrinking = false;
-            }
+            duelInactivityFrames = 0;
+            duelMapShrinking = false;
+            const isNotDuel = !isDuel;
             const baselineArea = 50000 * 50000;
             const currentArea = MAP_RADIUS * MAP_RADIUS;
             FOOD_COUNT = Math.floor(15000 * (currentArea / baselineArea) * densityMultiplier);
@@ -1444,6 +1444,7 @@
             if (isDead) return;
             isDead = true;
             isPlaying = false;
+            isDuel = false;
             bgMusic.pause(); 
             bgMusic.currentTime = 0;
 
@@ -1460,13 +1461,14 @@
 
             document.getElementById('menu-title').innerText = "YOU WIN";
             document.getElementById('menu-title').style.color = "#22c55e";
-            document.getElementById('server-label').innerText = "Duel";
+            document.getElementById('server-label').innerText = "Duel Server Deleted";
         }
 
         function triggerDuelMapCrush() {
             if (isDead) return;
             isDead = true;
             isPlaying = false;
+            isDuel = false;
             bgMusic.pause(); 
             bgMusic.currentTime = 0;
 
@@ -1481,7 +1483,7 @@
 
             document.getElementById('menu-title').innerText = "CRUSHED BY THE MAP";
             document.getElementById('menu-title').style.color = "#ef4444";
-            document.getElementById('server-label').innerText = "Duel";
+            document.getElementById('server-label').innerText = "Duel Server Deleted";
         }
 
         function updateLeaderboard() {
