@@ -597,6 +597,7 @@
                         <div class="text-gray-300">Lobby code: <span id="lobby-code-display"></span></div>
                         <div class="text-sm text-gray-400 mt-1">Share this code. Players: <span id="lobby-player-count">1</span>/<span id="lobby-player-limit">10</span></div>
                         <button class="btn-play rounded-xl py-2 text-sm w-full mt-2" id="host-start-game-btn" onclick="hostStartGame()">Start Game</button>
+                        <button class="rounded-xl py-2 text-sm w-full mt-1" style="background:rgba(255,255,255,0.06);color:#94a3b8;border:1px solid rgba(255,255,255,0.12);" onclick="leaveLobby()">Leave Lobby</button>
                     </div>
                 </div>
             </div>
@@ -1921,12 +1922,23 @@
             document.getElementById('join-code-input').parentElement.style.display = 'flex';
             document.getElementById('btn-create-lobby-toggle').style.display = 'block';
             document.getElementById('join-lobby-status').style.display = 'none';
-            document.getElementById('host-lobby-status').style.display = 'none';
-            document.getElementById('host-lobby-status').classList.remove('active');
-            document.getElementById('create-lobby-panel').style.display = 'none';
+            const hls = document.getElementById('host-lobby-status');
+            hls.style.display = '';
+            hls.classList.remove('active');
+            const clp = document.getElementById('create-lobby-panel');
+            clp.style.display = '';
+            clp.classList.remove('active');
             document.getElementById('lobby-settings-panel').classList.remove('active');
             document.getElementById('pause-overlay').style.display = 'none';
             if (isMobile) document.getElementById('joystick-container').style.display = 'none';
+        }
+
+        function leaveLobby() {
+            if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
+            activeConnection = null;
+            lobbyConnections = [];
+            isLobbyHost = false;
+            resetMultiplayerUI();
         }
 
         function triggerSelfDestruct() {
