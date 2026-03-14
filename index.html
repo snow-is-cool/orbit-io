@@ -896,6 +896,7 @@
         let hostName = '';
         let lobbyName = '';
         let joinOrder = []; // To track who is next host
+        let gameStarted = false; // True once the host has started the game
         let isPaused = false;
         let useLDM = false;
         let ldmRadius = 2000;
@@ -1306,6 +1307,11 @@
                         // Send current settings to new player
                         conn.send(JSON.stringify({ type: 'settings', showCode: showCodeForOthers, hostName, isPaused, lobbyName }));
                         broadcastJoinOrder();
+                        // If game already started, send start immediately so late joiner skips the wait screen
+                        if (gameStarted && hostLobbyConfig) {
+                            const { serverType, foodMult } = hostLobbyConfig;
+                            try { conn.send(JSON.stringify({ type: 'start', serverType, foodMult, hostName, showCode: showCodeForOthers })); } catch (e) {}
+                        }
                     });
                 });
             });
@@ -1316,9 +1322,10 @@
         }
 
         function hostStartGame() {
-            if (!hostLobbyConfig || !peer) return;
+            if (gameStarted || !hostLobbyConfig || !peer) return;
             const { serverType, foodMult } = hostLobbyConfig;
             const peerId = peer.id;
+            gameStarted = true;
             lobbyConnections.forEach(conn => {
                 try { conn.send(JSON.stringify({ type: 'start', serverType, foodMult, hostName, showCode: showCodeForOthers })); } catch (e) {}
             });
@@ -1326,8 +1333,16 @@
             document.getElementById('menu-overlay').style.opacity = '0';
             document.getElementById('menu-overlay').style.pointerEvents = 'none';
             document.getElementById('host-lobby-status').classList.remove('active');
-            startGame({ serverType, densityMultiplier: foodMult });
-            hostLobbyConfig = null;
+            const screen = document.getElementById('loading-screen');
+            const statusText = document.getElementById('loading-status-text');
+            statusText.innerText = "Connecting to Server...";
+            screen.style.display = 'flex';
+            screen.style.opacity = '1';
+            setTimeout(() => {
+                startGame({ serverType, densityMultiplier: foodMult });
+                screen.style.opacity = '0';
+                setTimeout(() => { screen.style.display = 'none'; }, 500);
+            }, 1500);
         }
 
         function broadcastSettings() {
@@ -1496,6 +1511,16 @@
             document.getElementById('host-lobby-status').classList.remove('active');
             document.getElementById('host-lobby-status').style.display = 'none';
 
+            const _jsc = document.getElementById('loading-screen');
+            const _jst = document.getElementById('loading-status-text');
+            _jst.innerText = "Connecting to Server...";
+            _jsc.style.display = 'flex';
+            _jsc.style.opacity = '1';
+            setTimeout(() => {
+                _jsc.style.opacity = '0';
+                setTimeout(() => { _jsc.style.display = 'none'; }, 500);
+            }, 1500);
+
             peer = new Peer({ debug: 0 });
             peer.on('open', () => {
                 const conn = peer.connect(peerId);
@@ -1514,7 +1539,16 @@
                                 activeConnection = conn;
                                 hostName = msg.hostName || "Host";
                                 showCodeForOthers = msg.showCode !== undefined ? msg.showCode : true;
+                                const _sc = document.getElementById('loading-screen');
+                                const _st = document.getElementById('loading-status-text');
+                                _st.innerText = "Connecting to Server...";
+                                _sc.style.display = 'flex';
+                                _sc.style.opacity = '1';
+                                setTimeout(() => {
                                 startGame({ serverType: msg.serverType, densityMultiplier: msg.foodMult });
+                                _sc.style.opacity = '0';
+                                setTimeout(() => { _sc.style.display = 'none'; }, 500);
+                                }, 1500);
                             } else if (msg.type === 'sync') {
                                 updateRemotePlayer(msg.payload);
                             } else if (msg.type === 'settings') {
@@ -1882,6 +1916,8 @@
         }
 
         function resetMultiplayerUI() {
+            gameStarted = false;
+            hostLobbyConfig = null;
             document.getElementById('join-code-input').parentElement.style.display = 'flex';
             document.getElementById('btn-create-lobby-toggle').style.display = 'block';
             document.getElementById('join-lobby-status').style.display = 'none';
