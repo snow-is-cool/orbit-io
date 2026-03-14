@@ -5,17 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Orbit.io - Endless Space</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <style>
+        html { -webkit-tap-highlight-color: transparent; }
         body { margin: 0; overflow-x: hidden; background-color: #010103; font-family: 'Montserrat', sans-serif; touch-action: none; }
         #gameCanvas { display: block; position: fixed; inset: 0; z-index: 1; }
         .ui-layer { position: absolute; inset: 0; pointer-events: none; color: white; z-index: 10; }
         .interactive { pointer-events: auto; }
-        #hud { position: fixed; bottom: 20px; left: 20px; font-size: 1.2rem; display: flex; flex-direction: column; gap: 10px; z-index: 20; }
-        #minimap { position: fixed; bottom: 20px; right: 20px; width: 150px; height: 150px; background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; z-index: 20; }
-        
+        #hud { position: fixed; bottom: 20px; left: 20px; font-size: 1.2rem; display: flex; flex-direction: column; gap: 10px; z-index: 20; bottom: max(20px, env(safe-area-inset-bottom)); left: max(20px, env(safe-area-inset-left)); }
+        #minimap { position: fixed; bottom: 20px; right: 20px; width: 150px; height: 150px; background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; z-index: 20; bottom: max(20px, env(safe-area-inset-bottom)); right: max(20px, env(safe-area-inset-right)); }
+
         #loading-screen {
             position: fixed;
             inset: 0;
@@ -84,6 +86,86 @@
         }
         #self-destruct:hover { background: rgba(239, 68, 68, 0.4); }
 
+        #lobby-settings-btn {
+            background: rgba(129, 140, 248, 0.2);
+            border: 1px solid rgba(129, 140, 248, 0.5);
+            color: #818cf8;
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s;
+        }
+        #lobby-settings-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+        #lobby-settings-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(129, 140, 248, 0.3);
+            padding: 20px;
+            border-radius: 16px;
+            z-index: 1000;
+            display: none;
+            width: 300px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        #lobby-settings-panel.active { display: block; pointer-events: auto; }
+
+        #pause-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(15px);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        .pause-content {
+            animation: pauseIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes pauseIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        #joystick-container {
+            position: fixed;
+            bottom: max(20px, env(safe-area-inset-bottom));
+            right: calc(max(20px, env(safe-area-inset-right)) + 160px);
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: none;
+            z-index: 100;
+            pointer-events: none;
+        }
+        #joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            background: rgba(129, 140, 248, 0.4);
+            border: 2px solid #818cf8;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
         #purge-orbit {
             background: rgba(249, 115, 22, 0.2);
             border: 1px solid rgba(249, 115, 22, 0.5);
@@ -114,6 +196,51 @@
         }
         #capture-toggle-btn.off { background: rgba(255, 255, 255, 0.05); color: #6b7280; border-color: #374151; }
 
+        #menu-home-btn {
+            position: fixed; top: 0; left: 0; z-index: 25;
+            display: flex; align-items: center; justify-content: center;
+            width: 48px; height: 48px; min-width: 48px; min-height: 48px; padding: 0;
+            margin: 0; border: none; border-radius: 0 0 12px 0;
+            background: rgba(0, 0, 0, 0.6); cursor: pointer; overflow: hidden;
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            text-decoration: none;
+            top: env(safe-area-inset-top, 0);
+            left: env(safe-area-inset-left, 0);
+        }
+        #menu-home-btn:hover { background: rgba(129, 140, 248, 0.35); }
+        #menu-home-btn:active { background: rgba(129, 140, 248, 0.5); }
+        #menu-home-btn img { width: 28px; height: 28px; object-fit: contain; display: block; }
+        #menu-home-btn .home-fallback { display: none; font-size: 0.85rem; color: #94a3b8; }
+        #menu-home-btn img[src=""] + .home-fallback { display: block; }
+
+        .menu-section-arrow {
+            width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px; cursor: pointer; color: #94a3b8; font-size: 1.5rem;
+            transition: background 0.2s, color 0.2s;
+        }
+        .menu-section-arrow:hover { background: rgba(129, 140, 248, 0.25); color: #818cf8; }
+        .menu-section-arrow.hidden { visibility: hidden; pointer-events: none; }
+        #menu-section-standard, #menu-section-lobbies { display: none; }
+        #menu-section-standard.active, #menu-section-lobbies.active { display: block; }
+        #local-lobby-list { max-height: 220px; overflow-y: auto; margin-top: 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px; background: rgba(0,0,0,0.3); }
+        .local-lobby-item { padding: 10px 12px; margin-bottom: 6px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; cursor: pointer; border: 1px solid transparent; }
+        .local-lobby-item:hover { background: rgba(129, 140, 248, 0.15); border-color: rgba(129, 140, 248, 0.3); }
+        .local-lobby-item:last-child { margin-bottom: 0; }
+        .local-lobby-meta { color: #94a3b8; font-size: 0.75rem; }
+        #create-lobby-panel { display: none; margin-top: 12px; padding: 1rem; background: rgba(0,0,0,0.4); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        #create-lobby-panel.active { display: block; }
+        #create-lobby-panel label { display: block; font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; text-transform: uppercase; }
+        #create-lobby-panel select, #create-lobby-panel input[type="number"] { width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: white; margin-bottom: 12px; font-size: 16px; }
+        #host-lobby-status { margin-top: 12px; padding: 12px; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; font-size: 0.9rem; display: none; }
+        #host-lobby-status.active { display: block; }
+        #lobby-code-display { font-family: monospace; font-size: 1.25rem; letter-spacing: 0.2em; color: #22c55e; cursor: pointer; user-select: none; }
+        #lobby-code-display:hover { opacity: 0.8; }
+        .join-by-code-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .join-by-code-row input { flex: 1; }
+
         #mobile-burst {
             background: rgba(129, 140, 248, 0.4);
             border: 2px solid #818cf8;
@@ -129,11 +256,12 @@
             cursor: pointer;
         }
         #mobile-burst:disabled { opacity: 0.3; border-color: gray; color: gray; }
+        #mobile-controls { bottom: max(20px, env(safe-area-inset-bottom)); }
 
         #leaderboard { 
             position: fixed; 
-            top: 20px; 
-            right: 20px; 
+            top: max(20px, env(safe-area-inset-top)); 
+            right: max(20px, env(safe-area-inset-right)); 
             background: rgba(0, 0, 0, 0.6); 
             border-radius: 12px; 
             backdrop-filter: blur(8px); 
@@ -160,15 +288,16 @@
             display: flex; 
             flex-direction: column;
             align-items: center; 
-            justify-content: flex-start; 
+            justify-content: flex-start;
+            gap: 30px;
             z-index: 100; 
             transition: opacity 1.5s ease; 
             overflow-y: auto;
-            padding: 50px 0;
+            padding: 60px 0;
             pointer-events: auto;
         }
-        .card { position: relative; background: #0a0a0f; border: 1px solid #1e1e2e; padding: 2rem; border-radius: 1.5rem; text-align: center; max-width: 440px; width: 90%; box-shadow: 0 0 40px rgba(99, 102, 241, 0.2); margin-bottom: 50px; }
-        
+        .card { position: relative; background: #0a0a0f; border: 1px solid #1e1e2e; padding: 2rem; border-radius: 1.5rem; text-align: center; max-width: 440px; width: 100%; box-shadow: 0 0 40px rgba(99, 102, 241, 0.2); margin: 0; box-sizing: border-box; }
+
         .server-dropdown-container { 
             display: flex; 
             position: relative; 
@@ -198,7 +327,7 @@
             letter-spacing: 0.1rem;
         }
         .btn-play:hover { filter: brightness(1.1); }
-        
+
         .server-select-mini { 
             background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
             padding: 0 20px; 
@@ -211,7 +340,7 @@
             transition: background 0.2s;
         }
         .server-select-mini:hover { filter: brightness(1.1); }
-        
+
         #serverSelect {
             position: absolute;
             right: 0;
@@ -222,7 +351,7 @@
             cursor: pointer;
             z-index: 5;
         }
-        
+
         #serverSelect option {
             background-color: #0a0a0f;
             color: white;
@@ -233,9 +362,15 @@
         .planet-preview { width: 80px; height: 80px; border-radius: 50%; background-size: cover; background-position: center; border: 2px solid rgba(255,255,255,0.1); }
         .planet-name { font-size: 0.9rem; color: #818cf8; font-weight: bold; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1em; }
         .nav-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
-        input[type="text"] { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 2rem; color: white; width: 100%; margin-bottom: 1.5rem; text-align: center; outline: none; transition: border-color 0.2s; }
+        input[type="text"] { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); padding: 0.75rem; border-radius: 2rem; color: white; width: 100%; margin-bottom: 1.5rem; text-align: center; outline: none; transition: border-color 0.2s; font-size: 16px; }
         input[type="text"]:focus { border-color: #818cf8; }
-        
+        @media (max-width: 768px) {
+            input[type="text"] { font-size: 16px; min-height: 44px; }
+            .zoom-btn, .toggle-btn { min-width: 44px; min-height: 44px; }
+            #hud { font-size: 1rem; }
+            #menu-overlay .card { margin-left: env(safe-area-inset-left); margin-right: env(safe-area-inset-right); }
+        }
+
         .toggle-container { margin: 10px 0; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
         .toggle-switch { width: 40px; height: 20px; background: #1e293b; border-radius: 20px; position: relative; cursor: pointer; border: 1px solid #334155; }
         .toggle-switch.active { background: #6366f1; }
@@ -257,7 +392,7 @@
             border: 1px solid #1e1e2e;
             padding: 2rem;
             border-radius: 1.5rem;
-            z-index: 110;
+            z-index: 1000;
             display: none;
             flex-direction: column;
             align-items: center;
@@ -292,7 +427,7 @@
             color: #818cf8;
         }
         .settings-btn:hover { background: rgba(129, 140, 248, 0.15); border-color: #818cf8; }
-        
+
         .slider-group { width: 100%; margin-bottom: 1rem; text-align: left; }
         .slider-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.5rem; }
         input[type="range"] {
@@ -330,16 +465,13 @@
         </div>
     </div>
     <canvas id="gameCanvas"></canvas>
-    <a href="https://snow-is-cool.github.io" id="homeButton" class="home-button">
-            <img src="tohome.png" alt="Home">
-        </a>
     <div class="ui-layer">
         <div id="settings-panel" class="interactive">
             <div class="settings-header">
                 <h2 class="text-xl font-bold text-indigo-400">SETTINGS</h2>
                 <button onclick="toggleSettings()" class="text-gray-500 hover:text-white text-2xl">&times;</button>
             </div>
-            
+
             <div class="slider-group">
                 <div class="slider-label"><span>Music</span><span id="music-vol-txt">40%</span></div>
                 <input type="range" id="musicVolume" min="0" max="100" value="40" oninput="updateVolume('music', this.value)">
@@ -348,6 +480,23 @@
             <div class="slider-group">
                 <div class="slider-label"><span>SFX</span><span id="sfx-vol-txt">60%</span></div>
                 <input type="range" id="sfxVolume" min="0" max="100" value="60" oninput="updateVolume('sfx', this.value)">
+            </div>
+
+            <div id="mobile-control-settings" class="flex flex-col gap-2 mb-4" style="display:none">
+                <span class="text-xs text-gray-400 uppercase tracking-widest font-bold">Mobile Controls</span>
+                <div class="flex gap-2">
+                    <button id="ctrl-tap" class="flex-1 py-1 text-[10px] rounded bg-indigo-600 text-white" onclick="setMobileControlMode('tap-to-move')">Tap to Move</button>
+                    <button id="ctrl-joy" class="flex-1 py-1 text-[10px] rounded bg-white/10 text-gray-400" onclick="setMobileControlMode('joystick')">Joystick</button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-gray-300">Low Detail Mode (LDM)</span>
+                <input type="checkbox" id="ldm-toggle" onchange="updateLDMSettings()">
+            </div>
+            <div id="ldm-radius-container" class="flex items-center justify-between mb-4" style="display:none">
+                <span class="text-xs text-gray-400">LDM Radius</span>
+                <input type="number" id="ldm-radius-input" value="2000" step="100" class="w-20 bg-black/40 border border-white/10 rounded px-1 text-xs text-white" onchange="updateLDMSettings()">
             </div>
 
             <hr class="w-full border-gray-800 my-4">
@@ -367,12 +516,20 @@
         </div>
 
         <div id="menu-overlay" class="interactive">
+            <a href="https://snow-is-cool.github.io" id="menu-home-btn" class="interactive" title="Back to home">
+                <img src="https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/tohome.png" alt="Home" crossorigin="anonymous" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <span class="home-fallback">Home</span>
+            </a>
+            <div style="position: relative; width: 90%; max-width: 440px;">
+                <button id="menu-arrow-left" class="menu-section-arrow interactive hidden" onclick="setMenuSection(1)" style="position: absolute; left: -56px; top: 50%; transform: translateY(-50%); z-index: 10;">&#8249;</button>
             <div class="card">
-                <button class="settings-btn" onclick="toggleSettings()" title="Settings">
+                <div class="flex items-center justify-center mb-4">
+                    <h1 id="menu-title" class="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400" style="font-size: 3.5rem; overflow-wrap: break-word; word-break: break-word; width: 100%; text-align: center; line-height: 1.1;">ORBIT.IO</h1>
+                </div>
+
+                <button class="settings-btn" onclick="toggleSettings()" title="Settings" style="position: absolute; top: 1rem; right: 1rem;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 </button>
-
-                <h1 id="menu-title" class="text-5xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">ORBIT.IO</h1>
                 <div class="planet-selector">
                     <button class="nav-btn" onclick="changePlanet(-1)">←</button>
                     <div id="planet-preview-img" class="planet-preview"></div>
@@ -380,29 +537,79 @@
                 </div>
                 <div id="planet-display-name" class="planet-name">Earth</div>
                 <input type="text" id="playerName" placeholder="Captain Name" maxlength="15">
-                
-                <div class="server-dropdown-container">
-                    <button class="btn-play" onclick="handlePlayClick()">
-                        <span id="play-button-text">ENTER ORBIT</span>
+
+                <div id="menu-section-standard" class="active">
+                    <div class="server-dropdown-container">
+                        <button class="btn-play" onclick="handlePlayClick()">
+                            <span id="play-button-text">ENTER ORBIT</span>
                         </button>
-                    <div class="server-select-mini">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                        <select id="serverSelect">
-                            <option value="duel">Duel (1.5k Units)</option>
-                            <option value="mini">Mini (2.5k Units)</option>
-                            <option value="tiny">Tiny (5k Units)</option>
-                            <option value="small" selected>Small (10k Units)</option>
-                            <option value="medium">Medium (25k Units)</option>
-                            <option value="large">Large (50k Units)</option>
-                            <option value="huge">Huge (75k Units)</option>
-                            <option value="massive">Massive (100k Units)</option>
+                        <div class="server-select-mini">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                            <select id="serverSelect">
+                                <option value="duel">Duel (1.5k Units)</option>
+                                <option value="mini">Mini (2.5k Units)</option>
+                                <option value="tiny">Tiny (5k Units)</option>
+                                <option value="small" selected>Small (10k Units)</option>
+                                <option value="medium">Medium (25k Units)</option>
+                                <option value="large">Large (50k Units)</option>
+                                <option value="huge">Huge (75k Units)</option>
+                                <option value="massive">Massive (100k Units)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-500 mt-6 uppercase tracking-widest font-semibold">Grow your mass to dominate the galaxy</p>
+                </div>
+
+                <div id="menu-section-lobbies">
+                    <h2 class="text-xl font-bold text-indigo-400 mb-3">Lobbies</h2>
+                    <div class="join-by-code-row">
+                        <input type="text" id="join-code-input" placeholder="Enter lobby code" maxlength="12" class="rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2" style="font-size: 16px;">
+                        <button class="btn-play rounded-xl py-2 px-4 text-sm" onclick="joinLobbyByCode()">Join</button>
+                    </div>
+                    <div id="join-lobby-status" style="display:none" class="bg-white/5 border border-white/10 rounded-xl p-4 mb-4">
+                        <div class="text-indigo-400 font-bold text-lg mb-1" id="lobby-name-display">Untitled Server</div>
+                        <div class="text-gray-300 text-sm">Connected to Lobby</div>
+                        <div class="text-[10px] text-gray-400 mt-2 uppercase tracking-widest">Waiting for host to start...</div>
+                    </div>
+                    <div class="flex gap-2 mb-2">
+                        <button class="btn-play rounded-xl py-2 text-sm flex-1" id="btn-create-lobby-toggle" onclick="toggleCreateLobbyPanel()">Create Lobby</button>
+                    </div>
+                    <div id="create-lobby-panel">
+                        <label>Lobby name</label>
+                        <input type="text" id="lobby-name-input" placeholder="My Lobby" maxlength="24" class="rounded-lg bg-white/10 border border-white/20 text-white px-3 py-2 mb-2" style="font-size: 16px;">
+                        <label>Map size</label>
+                        <select id="lobby-size-select">
+                            <option value="duel">Duel (1.5k)</option>
+                            <option value="mini">Mini (2.5k)</option>
+                            <option value="tiny">Tiny (5k)</option>
+                            <option value="small" selected>Small (10k)</option>
+                            <option value="medium">Medium (25k)</option>
+                            <option value="large">Large (50k)</option>
+                            <option value="huge">Huge (75k)</option>
+                            <option value="massive">Massive (100k)</option>
                         </select>
+                        <label>Food density</label>
+                        <select id="lobby-food-select">
+                            <option value="0.5">Low</option>
+                            <option value="1" selected>Normal</option>
+                            <option value="1.5">High</option>
+                            <option value="2">Very High</option>
+                        </select>
+                        <label>Max players</label>
+                        <input type="number" id="lobby-max-players" min="2" max="50" value="10">
+                        <button class="btn-play rounded-xl py-2 text-sm w-full mt-2" onclick="hostLobby()">Host Lobby</button>
+                    </div>
+                    <div id="host-lobby-status">
+                        <div class="text-gray-300">Lobby code: <span id="lobby-code-display"></span></div>
+                        <div class="text-sm text-gray-400 mt-1">Share this code. Players: <span id="lobby-player-count">1</span>/<span id="lobby-player-limit">10</span></div>
+                        <button class="btn-play rounded-xl py-2 text-sm w-full mt-2" id="host-start-game-btn" onclick="hostStartGame()">Start Game</button>
                     </div>
                 </div>
-                <p class="text-[10px] text-gray-500 mt-6 uppercase tracking-widest font-semibold">Grow your mass to dominate the galaxy</p>
+            </div>
+                <button id="menu-arrow-right" class="menu-section-arrow interactive" onclick="setMenuSection(2)" style="position: absolute; right: -56px; top: 50%; transform: translateY(-50%); z-index: 10;">&#8250;</button>
             </div>
 
-            <div class="how-to-play">
+            <div class="how-to-play" id="how-to-play-box">
                 <h2>HOW TO PLAY</h2>
                 <ul>
                     <li>Move your mouse to guide your planet through space.</li>
@@ -412,28 +619,58 @@
                     <li>If you are trapped, click rapidly to push yourself out from a gravity well.</li>
                     <li>Avoid larger planets that can shatter you on contact.</li>
                     <li>Hold left click to eject mass and gain a speed boost. Requires 5 stardust/planets in orbit.</li>
-                    <li>Scroll or use +/- buttons to zoom the camera. </li>
+                    <li>Scroll or use +/- buttons to zoom the camera.</li>
+                    <li><strong>Mobile:</strong> Drag to move your planet. Tap the BURST button to eject mass (when you have 5+ in orbit). Tap rapidly when captured to escape.</li>
                 </ul>
             </div>
         </div>
 
         <div id="hud" style="display:none">
-            <div id="server-label" class="text-indigo-400 font-bold">Endless Mode</div>
+            <div class="flex items-center gap-2">
+                <div id="server-label" class="text-indigo-400 font-bold">Endless Mode</div>
+            </div>
             <div>Mass: <span id="mass-val" class="font-mono text-indigo-300">0</span></div>
             <div id="orbit-status" class="text-xs text-gray-400">Captured By: <span id="captured-name" class="text-white">None</span></div>
             <div id="orbit-count-ui" class="text-[10px] text-gray-500">Items In Orbit: <span id="orbit-count" class="text-white">0</span></div>
-            
+            <div id="lobby-info-ui" class="text-[10px] text-indigo-400 mt-1" style="display:none">
+                Lobby: <span id="hud-lobby-code" class="text-white"></span> | Host: <span id="hud-host-name" class="text-white"></span>
+            </div>
+
             <div class="flex flex-col gap-2">
                 <div class="zoom-controls interactive">
                     <button class="zoom-btn" onclick="manualZoom(1.5)">+</button>
                     <button class="zoom-btn" onclick="manualZoom(0.5)">-</button>
                     <button id="toggle-names-btn" class="zoom-btn toggle-btn" onclick="toggleNames()">NAMES ON</button>
+                    <button id="lobby-settings-btn" class="disabled" onclick="toggleLobbySettings()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    </button>
                 </div>
                 <div class="flex gap-2">
                     <button id="capture-toggle-btn" class="interactive flex-1" onclick="togglePlayerCapture()">Gravity Well: ON</button>
                     <button id="purge-orbit" class="interactive flex-1" onclick="triggerPurgeOrbit()">Purge Orbit</button>
                 </div>
-                <button id="self-destruct" class="interactive flex-1" onclick="triggerSelfDestruct()">Self Destruct</button>
+                <button id="self-destruct" class="interactive flex-1" onclick="triggerSelfDestruct()">Leave Server</button>
+            </div>
+        </div>
+
+        <div id="lobby-settings-panel">
+            <h3 class="text-indigo-400 font-bold mb-4">Lobby Settings</h3>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-gray-300">Show Code for Others</span>
+                <input type="checkbox" id="show-code-toggle" onchange="updateLobbySettings()">
+            </div>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-sm text-gray-300">Pause Game</span>
+                <input type="checkbox" id="pause-game-toggle" onchange="updateLobbySettings()">
+            </div>
+            <button class="btn-play rounded-xl py-2 text-sm w-full mt-4" onclick="toggleLobbySettings()">Close</button>
+        </div>
+
+        <div id="pause-overlay" style="display:none">
+            <div class="pause-content">
+                <h2 class="text-4xl font-black text-white mb-2 italic tracking-tighter">GAME PAUSED</h2>
+                <p id="pause-message" class="text-indigo-300 mb-8 uppercase tracking-widest text-xs font-bold">Paused by Host</p>
+                <button class="interactive bg-white/10 hover:bg-white/20 border border-white/20 px-8 py-3 rounded-full text-white font-bold transition-all" onclick="triggerSelfDestruct()">LEAVE SERVER</button>
             </div>
         </div>
 
@@ -455,8 +692,12 @@
             </div>
         </div>
 
-        <div id="mobile-controls" style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 50; display: none;">
-            <button id="mobile-burst" class="interactive">BURST</button>
+        <div id="joystick-container">
+            <div id="joystick-knob"></div>
+        </div>
+
+        <div id="mobile-controls" style="position: fixed; bottom: 40px; right: 40px; z-index: 50; display: none;">
+            <button id="mobile-burst" class="interactive w-20 h-20 rounded-full bg-indigo-600/60 border-2 border-white/20 text-white font-bold text-xs shadow-lg active:scale-90 transition-transform">BURST</button>
         </div>
     </div>
 
@@ -475,7 +716,7 @@
 
         document.getElementById('serverSelect').addEventListener('change', updateButtonText);
         updateButtonText();
-        
+
         const GAME_TIPS = [
             "Gather small particles to grow your gravity well.",
             "Avoid planets larger than you—they will shatter you!",
@@ -607,6 +848,7 @@
             suffixes: ["Star", "Dust", "Planet", "Void", "Drifter", "Knight", "Ghost", "Storm", "Gazer", "Walker", "Cat", "Pizza", "Toaster", "Banana", "Robot", "Cactus", "Muffin", "Panda", "Ninja", "Wizard", "Cookie", "Potato", "Lemon", "Turtle", "Dolphin", "Oven", "Chair", "Cloud", "Rain", "Music"]
         };
 
+        const PLANET_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%23374151'/%3E%3C/svg%3E";
         const SOLAR_SYSTEM = [
             { name: "Mercury", url: "https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/Solar_System/Mercury.png" },
             { name: "Venus", url: "https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/Solar_System/Venus.png" },
@@ -616,7 +858,15 @@
             { name: "Saturn", url: "https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/Solar_System/Saturn.png" },
             { name: "Uranus", url: "https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/Solar_System/Uranus.png" },
             { name: "Neptune", url: "https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/Solar_System/Neptune.png" },
-            { name: "Pluto", url: "https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/Solar_System/Pluto.png" }
+            { name: "Pluto", url: "https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/Solar_System/Pluto.png" },
+            { name: "Placeholder 1", url: PLANET_PLACEHOLDER },
+            { name: "Placeholder 2", url: PLANET_PLACEHOLDER },
+            { name: "Placeholder 3", url: PLANET_PLACEHOLDER },
+            { name: "Placeholder 4", url: PLANET_PLACEHOLDER },
+            { name: "Placeholder 5", url: PLANET_PLACEHOLDER },
+            { name: "Placeholder 6", url: PLANET_PLACEHOLDER },
+            { name: "Placeholder 7", url: PLANET_PLACEHOLDER },
+            { name: "Placeholder 8", url: PLANET_PLACEHOLDER }
         ];
 
         let isPlaying = false;
@@ -639,6 +889,27 @@
         let selectedPlanetIdx = 2;
         let currentLbTab = 'top';
         let frameCount = 0;
+        let menuSection = 1;
+        let localLobbies = [];
+        let peer = null;
+        let isLobbyHost = false;
+        let lobbyConnections = [];
+        let activeConnection = null; // For client to host
+        let hostLobbyConfig = null;
+        let lobbyCode = '';
+        let originalLobbyCode = '';
+        let showCodeForOthers = true;
+        let hostName = '';
+        let lobbyName = '';
+        let joinOrder = []; // To track who is next host
+        let isPaused = false;
+        let useLDM = false;
+        let ldmRadius = 2000;
+        let mobileControlMode = 'tap-to-move'; 
+        let joystick = { active: false, x: 0, y: 0, startX: 0, startY: 0, currentX: 0, currentY: 0 };
+        let pinchDist = 0;
+        const LOBBY_CHANNEL = 'orbit-lobby-broadcast';
+        let LOBBY_REGISTRY_URL = ''; // Set in UI or e.g. 'http://192.168.1.5:8765'
 
         function formatMass(num) {
             if (num < 1000) return Math.floor(num).toString();
@@ -652,7 +923,7 @@
 
         function init() {
             resize();
-            
+
             setInterval(() => {
                 const tipEl = document.getElementById('loading-tip');
                 if (tipEl) {
@@ -668,14 +939,14 @@
             SOLAR_SYSTEM.forEach((p, idx) => {
                 const img = new Image();
                 img.crossOrigin = "anonymous"; 
-                
+
                 img.onload = () => { 
                     img.isLoaded = true; 
                     loadedTextures++;
                     if(idx === selectedPlanetIdx) updatePreview(); 
                     if(loadedTextures === SOLAR_SYSTEM.length) {
                         updateFavicon(SOLAR_SYSTEM[Math.floor(Math.random()*SOLAR_SYSTEM.length)].url);
-                        
+
                         setTimeout(() => {
                             const screen = document.getElementById('loading-screen');
                             if (screen) {
@@ -705,10 +976,97 @@
             }
 
             window.addEventListener('resize', resize);
-            window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-            
+            window.addEventListener('mousemove', (e) => { 
+                if (isInputPaused()) return;
+                mouse.x = e.clientX; 
+                mouse.y = e.clientY; 
+            });
+
+        const joyContainer = document.getElementById('joystick-container');
+        const joyKnob = document.getElementById('joystick-knob');
+        let joyActive = false;
+
+        function isInputPaused() {
+            return document.getElementById('settings-panel').classList.contains('active') || 
+                   document.getElementById('lobby-settings-panel').classList.contains('active');
+        }
+
+        window.addEventListener('touchstart', (e) => {
+            if (isInputPaused()) return;
+            if (isMobile && e.touches.length === 2) {
+                e.preventDefault();
+                pinchDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+            } else if (isMobile && mobileControlMode === 'joystick' && e.touches.length === 1) {
+                const touch = e.touches[0];
+                const rect = joyContainer.getBoundingClientRect();
+                const dx = touch.clientX - (rect.left + rect.width / 2);
+                const dy = touch.clientY - (rect.top + rect.height / 2);
+                if (Math.hypot(dx, dy) < rect.width / 2 + 50) {
+                    e.preventDefault();
+                    joyActive = true;
+                    updateJoystick(touch.clientX, touch.clientY);
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (isInputPaused()) return;
+            if (isMobile && e.touches.length === 2) {
+                e.preventDefault();
+                const newDist = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                if (pinchDist > 0) {
+                    const delta = newDist / pinchDist;
+                    camera.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, camera.zoom * delta));
+                }
+                pinchDist = newDist;
+            } else if (isMobile && mobileControlMode === 'joystick' && joyActive && e.touches.length === 1) {
+                e.preventDefault();
+                updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => {
+            pinchDist = 0;
+            joyActive = false;
+            joystick = { x: 0, y: 0 };
+            if (joyKnob) {
+                joyKnob.style.left = '50%';
+                joyKnob.style.top = '50%';
+            }
+        });
+
+        function updateJoystick(clientX, clientY) {
+            const rect = joyContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            let dx = clientX - centerX;
+            let dy = clientY - centerY;
+            const dist = Math.hypot(dx, dy);
+            const maxDist = rect.width / 2;
+
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+
+            joystick.x = dx * 10;
+            joystick.y = dy * 10;
+
+            if (joyKnob) {
+                joyKnob.style.left = (50 + (dx / rect.width) * 100) + '%';
+                joyKnob.style.top = (50 + (dy / rect.height) * 100) + '%';
+            }
+        }
+
             // ESCAPE LOGIC: Rapid clicking increases orbitDist
             const handleManualEscape = (e) => {
+                if (isInputPaused()) return;
                 if (!e.target.closest('.interactive')) {
                     mouse.down = true;
                     if (player && player.capturedBy) {
@@ -720,10 +1078,11 @@
 
             window.addEventListener('mousedown', handleManualEscape);
             window.addEventListener('mouseup', () => mouse.down = false);
-            
+
             const burstBtn = document.getElementById('mobile-burst');
             if (burstBtn) {
               burstBtn.addEventListener('touchstart', (e) => { 
+                  if (isInputPaused()) return;
                   mobileBurstDown = true; 
                   if (player && player.capturedBy) {
                       player.orbitDist += ESCAPE_STRENGTH;
@@ -735,32 +1094,51 @@
             }
 
             window.addEventListener('touchstart', (e) => { 
+                if (isInputPaused()) return;
                 if (!e.target.closest('.interactive')) {
-                    mouse.down = true; 
-                    mouse.x = e.touches[0].clientX; 
-                    mouse.y = e.touches[0].clientY; 
-                    if (player && player.capturedBy) {
-                        player.orbitDist += ESCAPE_STRENGTH;
-                        playSpatialSound(thumpSfx, player.x, player.y, 0.4);
+                    e.preventDefault();
+                    if (isMobile && mobileControlMode === 'joystick') {
+                        // In joystick mode: tap outside joystick = burst
+                        const touch = e.touches[0];
+                        const rect = joyContainer.getBoundingClientRect();
+                        const dx = touch.clientX - (rect.left + rect.width / 2);
+                        const dy = touch.clientY - (rect.top + rect.height / 2);
+                        if (Math.hypot(dx, dy) >= rect.width / 2 + 30) {
+                            mobileBurstDown = true;
+                            if (player && player.capturedBy) {
+                                player.orbitDist += ESCAPE_STRENGTH;
+                                playSpatialSound(thumpSfx, player.x, player.y, 0.4);
+                            }
+                        }
+                    } else {
+                        mouse.down = true; 
+                        mouse.x = e.touches[0].clientX; 
+                        mouse.y = e.touches[0].clientY; 
+                        if (player && player.capturedBy) {
+                            player.orbitDist += ESCAPE_STRENGTH;
+                            playSpatialSound(thumpSfx, player.x, player.y, 0.4);
+                        }
                     }
                 }
             }, { passive: false });
             window.addEventListener('touchmove', (e) => {
-                if (mouse.down) { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; }
+                if (isInputPaused()) return;
+                if (mouse.down) { 
+                    e.preventDefault();
+                    mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; 
+                }
             }, { passive: false });
-            window.addEventListener('touchend', () => mouse.down = false);
-            
+            window.addEventListener('touchend', () => {
+                mouse.down = false;
+                if (isMobile && mobileControlMode === 'joystick') mobileBurstDown = false;
+            });
+
             window.addEventListener('wheel', (e) => {
                 if (!isPlaying && !isDead) return;
                 if (e.deltaY > 0) camera.manualZoomFactor *= 0.9;
                 else camera.manualZoomFactor *= 1.1;
                 clampManualZoom();
             }, { passive: true });
-
-            if (isMobile) {
-                document.getElementById('mobile-controls').style.display = 'block';
-                document.getElementById('mobile-burst').style.display = 'flex';
-            }
 
             updatePreview();
             gameLoop();
@@ -793,7 +1171,479 @@
         }
         function changePlanet(dir) { selectedPlanetIdx = (selectedPlanetIdx + dir + SOLAR_SYSTEM.length) % SOLAR_SYSTEM.length; updatePreview(); }
         function toggleAsteroids() { useAsteroids = !useAsteroids; document.getElementById('asteroidToggle').classList.toggle('active', useAsteroids); }
-        function toggleSettings() { document.getElementById('settings-panel').classList.toggle('active'); }
+        function toggleSettings() { 
+            const panel = document.getElementById('settings-panel');
+            panel.classList.toggle('active'); 
+            if (panel.classList.contains('active')) {
+                mouse.down = false;
+                joyActive = false;
+                mobileBurstDown = false;
+                document.getElementById('mobile-control-settings').style.display = isMobile ? 'flex' : 'none';
+                document.getElementById('ldm-toggle').checked = useLDM;
+                document.getElementById('ldm-radius-input').value = ldmRadius;
+                document.getElementById('ldm-radius-container').style.display = useLDM ? 'flex' : 'none';
+            }
+        }
+
+        function setMenuSection(n) {
+            menuSection = n;
+            const std = document.getElementById('menu-section-standard');
+            const lob = document.getElementById('menu-section-lobbies');
+            const leftArrow = document.getElementById('menu-arrow-left');
+            const rightArrow = document.getElementById('menu-arrow-right');
+            const howTo = document.getElementById('how-to-play-box');
+            if (howTo) howTo.style.display = 'block';
+            if (n === 1) {
+                std.classList.add('active'); lob.classList.remove('active');
+                leftArrow.classList.add('hidden'); rightArrow.classList.remove('hidden');
+            } else {
+                std.classList.remove('active'); lob.classList.add('active');
+                leftArrow.classList.remove('hidden'); rightArrow.classList.add('hidden');
+            }
+        }
+
+        function toggleCreateLobbyPanel() {
+            const panel = document.getElementById('create-lobby-panel');
+            const status = document.getElementById('host-lobby-status');
+            panel.classList.toggle('active');
+            if (status.classList.contains('active')) status.classList.remove('active');
+        }
+
+        function randomLobbyCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let s = '';
+            for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+            return s;
+        }
+
+        function updateRemotePlayer(data) {
+            let rp = entities.find(e => e.networkId === data.id);
+            if (data.deleted) {
+                if (rp) rp.toBeRemoved = true;
+                return;
+            }
+            if (!rp) {
+                rp = createEntity(data.name, data.x, data.y, data.mass, false);
+                rp.networkId = data.id;
+                rp.isRemote = true;
+                if (textures[data.textureIdx]) rp.texture = textures[data.textureIdx];
+                entities.push(rp);
+            }
+            rp.x = data.x;
+            rp.y = data.y;
+            rp.mass = data.mass;
+            rp.radius = data.radius;
+            rp.capturingEnabled = data.capturingEnabled;
+            rp.toBeRemoved = false; // Keep alive as long as we get syncs
+        }
+
+        function hostLobby() {
+            const nameEl = document.getElementById('lobby-name-input');
+            const sizeEl = document.getElementById('lobby-size-select');
+            const foodEl = document.getElementById('lobby-food-select');
+            const maxEl = document.getElementById('lobby-max-players');
+
+            const rawLobbyName = nameEl ? nameEl.value.trim() : "";
+            lobbyName = rawLobbyName || "Untitled Server";
+
+            const name = lobbyName;
+            const serverType = sizeEl ? sizeEl.value : 'small';
+            const foodMult = foodEl ? parseFloat(foodEl.value) : 1;
+            const maxPlayers = maxEl ? Math.min(50, Math.max(2, parseInt(maxEl.value, 10) || 10)) : 10;
+            const code = randomLobbyCode();
+            if (peer) try { peer.destroy(); } catch (e) {}
+            peer = new Peer(code, { debug: 0 });
+            peer.on('open', () => {
+                isLobbyHost = true;
+                lobbyCode = code;
+                originalLobbyCode = code;
+                hostName = (document.getElementById('playerName') && document.getElementById('playerName').value.trim()) || "Host";
+                lobbyConnections = [];
+                joinOrder = [];
+                const sizeLabels = { duel: '1.5k', mini: '2.5k', tiny: '5k', small: '10k', medium: '25k', large: '50k', huge: '75k', massive: '100k' };
+                const foodLabels = { 0.5: 'Low', 1: 'Normal', 1.5: 'High', 2: 'Very High' };
+                const lobby = { peerId: code, name, serverType, foodMult, maxPlayers, currentPlayers: 1, size: sizeLabels[serverType] || '10k', foodDensity: foodLabels[foodMult] || 'Normal', playerLimit: maxPlayers };
+                registerLobby(lobby);
+                document.getElementById('create-lobby-panel').classList.remove('active');
+                document.getElementById('host-lobby-status').classList.add('active');
+                document.getElementById('lobby-code-display').textContent = code;
+                document.getElementById('lobby-player-count').textContent = '1';
+                document.getElementById('lobby-player-limit').textContent = String(maxPlayers);
+                hostLobbyConfig = { serverType, foodMult, maxPlayers };
+                peer.on('connection', (conn) => {
+                    conn.on('open', () => {
+                        if (lobbyConnections.length >= maxPlayers - 1) { conn.close(); return; }
+                        lobbyConnections.push(conn);
+                        // joinOrder should be [hostId, p2Id, p3Id, ...]
+                        if (joinOrder.length === 0) joinOrder = [peer.id];
+                        joinOrder.push(conn.peer);
+                        broadcastJoinOrder();
+                        document.getElementById('lobby-player-count').textContent = String(lobbyConnections.length + 1);
+                        updateRegistryLobbyCount(code, lobbyConnections.length + 1);
+                        conn.on('data', (data) => {
+                            try {
+                                const msg = JSON.parse(data);
+                                if (msg.type === 'sync') {
+                                    updateRemotePlayer(msg.payload);
+                                    // Broadcast to other clients
+                                    lobbyConnections.forEach(other => {
+                                        if (other !== conn && other.open) other.send(data);
+                                    });
+                                } else if (msg.type === 'settings') {
+                                    // Only host can change settings, but if we are host we broadcast
+                                    if (isLobbyHost) {
+                                        showCodeForOthers = msg.showCode;
+                                        isPaused = msg.isPaused;
+                                        broadcastSettings();
+                                    }
+                                }
+                            } catch(e) {}
+                        });
+                        conn.on('close', () => {
+                            lobbyConnections = lobbyConnections.filter(c => c !== conn);
+                            joinOrder = joinOrder.filter(id => id !== conn.peer);
+                            broadcastJoinOrder();
+                            document.getElementById('lobby-player-count').textContent = String(lobbyConnections.length + 1);
+                            updateRegistryLobbyCount(code, lobbyConnections.length + 1);
+                            // Notify others that this player left
+                            const deleteMsg = JSON.stringify({ type: 'sync', payload: { id: conn.peer, deleted: true } });
+                            lobbyConnections.forEach(c => { if(c.open) c.send(deleteMsg); });
+                        });
+                        // Send current settings to new player
+                        conn.send(JSON.stringify({ type: 'settings', showCode: showCodeForOthers, hostName, isPaused, lobbyName }));
+                        broadcastJoinOrder();
+                    });
+                });
+            });
+            peer.on('error', (err) => {
+                if (err.type === 'unavailable-id') hostLobby();
+                else document.getElementById('host-lobby-status').innerHTML = '<span class="text-red-400">Error: ' + (err.message || err.type) + '. Try again.</span>';
+            });
+        }
+
+        function hostStartGame() {
+            if (!hostLobbyConfig || !peer) return;
+            const { serverType, foodMult } = hostLobbyConfig;
+            const peerId = peer.id;
+            lobbyConnections.forEach(conn => {
+                try { conn.send(JSON.stringify({ type: 'start', serverType, foodMult, hostName, showCode: showCodeForOthers })); } catch (e) {}
+            });
+            unregisterLobby(peerId);
+            document.getElementById('menu-overlay').style.opacity = '0';
+            document.getElementById('menu-overlay').style.pointerEvents = 'none';
+            document.getElementById('host-lobby-status').classList.remove('active');
+            startGame({ serverType, densityMultiplier: foodMult });
+            hostLobbyConfig = null;
+        }
+
+        function broadcastSettings() {
+            const msg = JSON.stringify({ 
+                type: 'settings', 
+                showCode: showCodeForOthers, 
+                hostName,
+                isPaused,
+                lobbyName
+            });
+            if (isLobbyHost) {
+                lobbyConnections.forEach(c => { if(c.open) c.send(msg); });
+            }
+            updateHUDLobbyInfo();
+        }
+
+        function broadcastJoinOrder() {
+            if (!isLobbyHost) return;
+            const msg = JSON.stringify({ type: 'joinOrder', order: joinOrder });
+            lobbyConnections.forEach(c => { if(c.open) c.send(msg); });
+        }
+
+        function toggleLobbySettings() {
+            const panel = document.getElementById('lobby-settings-panel');
+            const isActive = panel.classList.contains('active');
+            if (!isActive && !isLobbyHost) return;
+            panel.classList.toggle('active');
+
+            if (panel.classList.contains('active')) {
+                mouse.down = false;
+                joyActive = false;
+                mobileBurstDown = false;
+                document.getElementById('pause-game-toggle').checked = isPaused;
+            }
+        }
+
+        function updateLobbySettings() {
+            if (!isLobbyHost) return;
+            showCodeForOthers = document.getElementById('show-code-toggle').checked;
+            isPaused = document.getElementById('pause-game-toggle').checked;
+            broadcastSettings();
+        }
+
+        function updateLDMSettings() {
+            useLDM = document.getElementById('ldm-toggle').checked;
+            ldmRadius = parseInt(document.getElementById('ldm-radius-input').value, 10) || 2000;
+            document.getElementById('ldm-radius-container').style.display = useLDM ? 'flex' : 'none';
+        }
+
+        function setMobileControlMode(mode) {
+            mobileControlMode = mode;
+            document.getElementById('ctrl-tap').className = `flex-1 py-1 text-[10px] rounded ${mode === 'tap-to-move' ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-400'}`;
+            document.getElementById('ctrl-joy').className = `flex-1 py-1 text-[10px] rounded ${mode === 'joystick' ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-400'}`;
+
+            if (isPlaying && isMobile) {
+                document.getElementById('joystick-container').style.display = mode === 'joystick' ? 'block' : 'none';
+                document.getElementById('mobile-burst').style.display = mode === 'joystick' ? 'none' : 'flex';
+                if (mode === 'joystick') mobileBurstDown = false;
+            }
+        }
+
+        function updateHUDLobbyInfo() {
+            const info = document.getElementById('lobby-info-ui');
+            const settingsBtn = document.getElementById('lobby-settings-btn');
+
+            if (peer && !peer.destroyed && (isLobbyHost || activeConnection)) {
+                info.style.display = 'block';
+                const codeSpan = document.getElementById('hud-lobby-code');
+                const hostSpan = document.getElementById('hud-host-name');
+
+                const displayCode = originalLobbyCode || lobbyCode;
+                if (isLobbyHost || showCodeForOthers) {
+                    codeSpan.textContent = displayCode;
+                    codeSpan.title = 'Click to copy';
+                    codeSpan.style.cursor = 'pointer';
+                } else {
+                    codeSpan.textContent = '******';
+                    codeSpan.title = '';
+                    codeSpan.style.cursor = 'default';
+                }
+                hostSpan.textContent = hostName;
+
+                if (isLobbyHost) {
+                    settingsBtn.style.display = 'flex';
+                    settingsBtn.classList.remove('disabled');
+                } else {
+                    settingsBtn.style.display = 'none';
+                }
+            } else {
+                info.style.display = 'none';
+                settingsBtn.style.display = 'none';
+            }
+        }
+
+        function registerLobby(lobby) {
+            try {
+                const bc = new BroadcastChannel(LOBBY_CHANNEL);
+                bc.postMessage({ type: 'lobby', lobby });
+                bc.onmessage = (e) => {
+                    if (e.data && e.data.type === 'request' && hostLobbyConfig && peer) {
+                        bc.postMessage({ type: 'lobby', lobby: { peerId: peer.id, name: lobby.name, serverType: hostLobbyConfig.serverType, foodDensity: lobby.foodDensity, size: lobby.size, currentPlayers: lobbyConnections.length + 1, playerLimit: hostLobbyConfig.maxPlayers } });
+                    }
+                };
+            } catch (e) {}
+            const regUrl = getRegistryUrl();
+            if (regUrl) {
+                fetch(regUrl + '/lobbies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lobby) }).catch(() => {});
+            }
+        }
+
+        function updateRegistryLobbyCount(peerId, count) {
+            const regUrl = getRegistryUrl();
+            if (regUrl) fetch(regUrl + '/lobbies/' + encodeURIComponent(peerId) + '/count', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPlayers: count }) }).catch(() => {});
+        }
+
+        function unregisterLobby(peerId) {
+            const regUrl = getRegistryUrl();
+            if (regUrl) fetch(regUrl + '/lobbies/' + encodeURIComponent(peerId), { method: 'DELETE' }).catch(() => {});
+        }
+
+        function getRegistryUrl() {
+            const el = document.getElementById('lobby-registry-url');
+            return (el && el.value.trim()) || LOBBY_REGISTRY_URL || '';
+        }
+
+        function findLocalLobbies() {
+            localLobbies = [];
+            const regUrl = getRegistryUrl();
+            try {
+                const bc = new BroadcastChannel(LOBBY_CHANNEL);
+                bc.postMessage({ type: 'request' });
+                bc.onmessage = (e) => {
+                    if (e.data && e.data.type === 'lobby' && e.data.lobby) {
+                        const l = e.data.lobby;
+                        if (!localLobbies.some(x => x.peerId === l.peerId)) {
+                            localLobbies.push({ ...l, onJoin: () => joinLobby(l.peerId) });
+                            renderLocalLobbyList();
+                        }
+                    }
+                };
+                setTimeout(() => { bc.close(); if (localLobbies.length === 0 && !regUrl) renderLocalLobbyList(); }, 2500);
+            } catch (e) {}
+            if (regUrl) {
+                fetch(regUrl + '/lobbies').then(r => r.json()).then(arr => {
+                    if (Array.isArray(arr)) arr.forEach(l => { if (!localLobbies.some(x => x.peerId === l.peerId)) localLobbies.push({ ...l, onJoin: () => joinLobby(l.peerId) }); });
+                    renderLocalLobbyList();
+                }).catch(() => renderLocalLobbyList());
+            } else if (!window.BroadcastChannel) renderLocalLobbyList();
+            if (regUrl) setTimeout(renderLocalLobbyList, 500);
+        }
+
+        function joinLobbyByCode() {
+            const input = document.getElementById('join-code-input');
+            const code = input && input.value.trim().toUpperCase().replace(/\s/g, '');
+            if (!code) return;
+            joinLobby(code);
+        }
+
+        function joinLobby(peerId) {
+            if (peer) try { peer.destroy(); } catch (e) {}
+            lobbyCode = peerId;
+            originalLobbyCode = peerId;
+            isLobbyHost = false;
+            activeConnection = null;
+
+            document.getElementById('host-lobby-status').classList.remove('active');
+            document.getElementById('host-lobby-status').style.display = 'none';
+
+            peer = new Peer({ debug: 0 });
+            peer.on('open', () => {
+                const conn = peer.connect(peerId);
+                conn.on('open', () => {
+                    activeConnection = conn;
+                    document.getElementById('join-code-input').parentElement.style.display = 'none';
+                    document.getElementById('btn-create-lobby-toggle').style.display = 'none';
+                    document.getElementById('join-lobby-status').style.display = 'block';
+
+                    conn.on('data', (data) => {
+                        try {
+                            const msg = JSON.parse(data);
+                            if (msg.type === 'start' && msg.serverType != null) {
+                                document.getElementById('menu-overlay').style.opacity = '0';
+                                document.getElementById('menu-overlay').style.pointerEvents = 'none';
+                                activeConnection = conn;
+                                hostName = msg.hostName || "Host";
+                                showCodeForOthers = msg.showCode !== undefined ? msg.showCode : true;
+                                startGame({ serverType: msg.serverType, densityMultiplier: msg.foodMult });
+                            } else if (msg.type === 'sync') {
+                                updateRemotePlayer(msg.payload);
+                            } else if (msg.type === 'settings') {
+                                showCodeForOthers = msg.showCode;
+                                hostName = msg.hostName;
+                                isPaused = msg.isPaused || false;
+                                if (msg.lobbyName) {
+                                    lobbyName = msg.lobbyName;
+                                    document.getElementById('lobby-name-display').textContent = lobbyName;
+                                }
+                                updateHUDLobbyInfo();
+                            } else if (msg.type === 'joinOrder') {
+                                joinOrder = msg.order;
+                            } else if (msg.type === 'host-migration') {
+                                handleHostMigration(msg.newHostId, msg.newHostName);
+                            }
+                        } catch (e) {}
+                    });
+                    conn.on('close', () => {
+                        activeConnection = null;
+                        entities = entities.filter(e => !e.isRemote);
+                        if (joinOrder.length > 0) {
+                            // "make the person who last joined the new host"
+                            // joinOrder includes the host at index 0.
+                            // If host left, we look at the remaining ones.
+                            const remaining = joinOrder.filter(id => id !== lobbyCode);
+                            if (remaining.length > 0) {
+                                const lastJoinedId = remaining[remaining.length - 1];
+                                handleHostMigration(lastJoinedId, "New Host");
+                            }
+                        }
+                    });
+                });
+            });
+            peer.on('error', (err) => {
+                alert('Could not join lobby: ' + (err.message || err.type || 'Connection failed. Check the code.'));
+            });
+
+            // Show lobby status even for joiners
+            document.getElementById('create-lobby-panel').classList.remove('active');
+            document.getElementById('host-lobby-status').classList.add('active');
+            document.getElementById('lobby-code-display').textContent = peerId;
+            // Hide host-only buttons
+            const btnHostStart = document.getElementById('btn-host-start'); if (btnHostStart) btnHostStart.style.display = 'none';
+            document.getElementById('lobby-name-display').textContent = "Joining...";
+        }
+
+        function handleHostMigration(newHostId, newHostName) {
+            lobbyCode = newHostId;
+            if (peer.id === newHostId) {
+                // I am the new host!
+                isLobbyHost = true;
+                activeConnection = null;
+                lobbyConnections = [];
+                hostName = (document.getElementById('playerName') && document.getElementById('playerName').value.trim()) || "New Host";
+
+                // I am now the host. I should wait for others to connect to me.
+                peer.on('connection', (conn) => {
+                    conn.on('open', () => {
+                        lobbyConnections.push(conn);
+                        conn.on('data', (data) => {
+                            try {
+                                const msg = JSON.parse(data);
+                                if (msg.type === 'sync') {
+                                    updateRemotePlayer(msg.payload);
+                                    lobbyConnections.forEach(other => {
+                                        if (other !== conn && other.open) other.send(data);
+                                    });
+                                }
+                            } catch(e) {}
+                        });
+                        conn.on('close', () => {
+                            lobbyConnections = lobbyConnections.filter(c => c !== conn);
+                        });
+                        // Send current settings
+                        conn.send(JSON.stringify({ type: 'settings', showCode: showCodeForOthers, hostName }));
+                    });
+                });
+            } else {
+                hostName = newHostName;
+                // We'd need to connect to newHostId
+                if (activeConnection) activeConnection.close();
+                activeConnection = peer.connect(newHostId);
+                activeConnection.on('open', () => {
+                    activeConnection.on('data', (data) => {
+                        try {
+                            const msg = JSON.parse(data);
+                            if (msg.type === 'sync') updateRemotePlayer(msg.payload);
+                            else if (msg.type === 'settings') {
+                                showCodeForOthers = msg.showCode;
+                                hostName = msg.hostName;
+                                updateHUDLobbyInfo();
+                            }
+                        } catch(e) {}
+                    });
+                });
+            }
+            updateHUDLobbyInfo();
+        }
+
+        function renderLocalLobbyList() {
+            const container = document.getElementById('local-lobby-list');
+            const emptyEl = document.getElementById('local-lobby-list-empty');
+            if (localLobbies.length === 0) {
+                emptyEl.style.display = 'block';
+                container.querySelectorAll('.local-lobby-item').forEach(el => el.remove());
+                return;
+            }
+            emptyEl.style.display = 'none';
+            container.querySelectorAll('.local-lobby-item').forEach(el => el.remove());
+            localLobbies.forEach(lobby => {
+                const div = document.createElement('div');
+                div.className = 'local-lobby-item interactive';
+                div.innerHTML = `<span class="font-medium">${lobby.name || 'Lobby'}</span><span class="local-lobby-meta">Size: ${lobby.size || '—'} · Food: ${lobby.foodDensity || '—'} · Players: ${lobby.currentPlayers != null ? lobby.currentPlayers : '0'}/${lobby.playerLimit != null ? lobby.playerLimit : '—'}</span>`;
+                div.onclick = () => { if (lobby.onJoin) lobby.onJoin(); };
+                container.appendChild(div);
+            });
+        }
+
+        function goToHome() {
+            window.location.href = 'https://snow-is-cool.github.io';
+        }
+
         function toggleLeaderboard() {
             const lb = document.getElementById('leaderboard');
             const titleText = document.getElementById('lb-title-text');
@@ -819,7 +1669,7 @@
             return Math.max(10, m * Math.log10(Math.max(100, mass)) + b);
         }
         function getGravityRadius(visualRadius) { return visualRadius * 7.5; }
-        
+
         function getRandomMapPos() {
             const angle = Math.random() * Math.PI * 2;
             const r = Math.sqrt(Math.random()) * (MAP_RADIUS - 1000);
@@ -853,8 +1703,14 @@
             statusText.innerText = "Connecting to Server...";
             screen.style.display = 'flex';
             screen.style.opacity = '1';
-            
+
             updateFavicon(SOLAR_SYSTEM[Math.floor(Math.random()*SOLAR_SYSTEM.length)].url);
+
+            // Reset lobby state for standard play
+            if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
+            activeConnection = null;
+            isLobbyHost = false;
+            resetMultiplayerUI();
 
             await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 4000) + 3000));
             startGame();
@@ -862,20 +1718,24 @@
             setTimeout(() => { screen.style.display = 'none'; }, 500);
         }
 
-        function startGame() {
-            const serverType = document.getElementById('serverSelect').value;
+        function startGame(overrideConfig) {
+            const serverType = overrideConfig && overrideConfig.serverType != null ? overrideConfig.serverType : document.getElementById('serverSelect').value;
             let displayServer = "Small Server";
-            let densityMultiplier = 1.0;
-            
+            let densityMultiplier = (overrideConfig && overrideConfig.densityMultiplier != null) ? overrideConfig.densityMultiplier : 1.0;
+
             switch(serverType) {
-                case 'duel': MAP_RADIUS = 1500; BOT_COUNT = 1; displayServer = "Duel"; densityMultiplier = 5; break;
-                case 'mini': MAP_RADIUS = 2500; BOT_COUNT = 19; displayServer = "Mini Server"; densityMultiplier = 2.5; break;
-                case 'tiny': MAP_RADIUS = 5000; BOT_COUNT = 39; displayServer = "Tiny Server"; densityMultiplier = 2.5; break;
-                case 'small': MAP_RADIUS = 10000; BOT_COUNT = 59; displayServer = "Small Server"; densityMultiplier = 2.5; break;
-                case 'medium': MAP_RADIUS = 25000; BOT_COUNT = 79; displayServer = "Medium Server"; densityMultiplier = 1.4; break;
-                case 'large': MAP_RADIUS = 50000; BOT_COUNT = 79; displayServer = "Large Server"; densityMultiplier = 1.2; break;
-                case 'huge': MAP_RADIUS = 75000; BOT_COUNT = 79; displayServer = "Huge Server"; densityMultiplier = 0.9; break;
-                case 'massive': MAP_RADIUS = 100000; BOT_COUNT = 79; displayServer = "Massive Server"; densityMultiplier = 0.8; break;
+                case 'duel': MAP_RADIUS = 1500; BOT_COUNT = 1; displayServer = "Duel"; if (!overrideConfig) densityMultiplier = 5; break;
+                case 'mini': MAP_RADIUS = 2500; BOT_COUNT = 19; displayServer = "Mini Server"; if (!overrideConfig) densityMultiplier = 2.5; break;
+                case 'tiny': MAP_RADIUS = 5000; BOT_COUNT = 39; displayServer = "Tiny Server"; if (!overrideConfig) densityMultiplier = 2.5; break;
+                case 'small': MAP_RADIUS = 10000; BOT_COUNT = 59; displayServer = "Small Server"; if (!overrideConfig) densityMultiplier = 2.5; break;
+                case 'medium': MAP_RADIUS = 25000; BOT_COUNT = 79; displayServer = "Medium Server"; if (!overrideConfig) densityMultiplier = 1.4; break;
+                case 'large': MAP_RADIUS = 50000; BOT_COUNT = 79; displayServer = "Large Server"; if (!overrideConfig) densityMultiplier = 1.2; break;
+                case 'huge': MAP_RADIUS = 75000; BOT_COUNT = 79; displayServer = "Huge Server"; if (!overrideConfig) densityMultiplier = 0.9; break;
+                case 'massive': MAP_RADIUS = 100000; BOT_COUNT = 79; displayServer = "Massive Server"; if (!overrideConfig) densityMultiplier = 0.8; break;
+            }
+            // Disable bots in multiplayer lobbies
+            if (isLobbyHost || activeConnection) {
+                BOT_COUNT = 0;
             }
             // Explicitly reset duel flags every time we start a game
             isDuel = serverType === 'duel';
@@ -888,24 +1748,29 @@
 
             food = []; entities = []; particles = [];
             bgMusic.play().catch(() => {});
-            
+
             const overlay = document.getElementById('menu-overlay');
             overlay.style.opacity = '0';
             overlay.style.pointerEvents = 'none';
             overlay.scrollTo(0,0);
-            
+
             document.getElementById('hud').style.display = 'flex';
             document.getElementById('minimap').style.display = 'block';
             document.getElementById('leaderboard').style.display = 'block';
+            if (isMobile) {
+                document.getElementById('mobile-controls').style.display = 'block';
+                document.getElementById('mobile-burst').style.display = mobileControlMode === 'joystick' ? 'none' : 'flex';
+                document.getElementById('joystick-container').style.display = mobileControlMode === 'joystick' ? 'block' : 'none';
+            }
             document.getElementById('server-label').innerText = displayServer;
             document.getElementById('menu-title').innerText = "ORBIT.IO";
             document.getElementById('menu-title').style.color = "";
-            
+
             const nameInput = document.getElementById('playerName').value.trim();
             const name = nameInput || generateProceduralName();
             const startPos = getRandomMapPos();
             const playerStartMass = isDuel ? 10 : INITIAL_MASS;
-            
+
             player = createEntity(name, startPos.x, startPos.y, playerStartMass, true);
             // Ensure player gravity well starts ON by default
             player.capturingEnabled = true;
@@ -918,10 +1783,11 @@
                 captureBtn.innerText = 'Gravity Well: ON';
                 captureBtn.classList.remove('off');
             }
-            
+
             populateBots(true, isNotDuel);
             for(let i=0; i<FOOD_COUNT; i++) spawnFood();
 
+            updateHUDLobbyInfo();
             isPlaying = true;
             isDead = false;
             camera.manualZoomFactor = 1.0;
@@ -931,7 +1797,7 @@
             while(entities.length < BOT_COUNT + (player && !player.toBeRemoved ? 1 : 0)) {
                 const bName = generateProceduralName();
                 const pos = getRandomMapPos();
-                
+
                 let finalMass;
                 if (!isNotDuel) {
                     // Duel mode: opponent starts at 10 mass, same as you
@@ -944,7 +1810,7 @@
                 } else {
                     finalMass = 100;
                 }
-                
+
                 entities.push(createEntity(bName, pos.x, pos.y, finalMass, false));
             }
         }
@@ -1021,12 +1887,51 @@
             spawnExplosion(ent.x, ent.y, ent.color, ent.vx, ent.vy, 50);
         }
 
+        function resetMultiplayerUI() {
+            document.getElementById('join-code-input').parentElement.style.display = 'flex';
+            document.getElementById('btn-create-lobby-toggle').style.display = 'block';
+            document.getElementById('join-lobby-status').style.display = 'none';
+            document.getElementById('host-lobby-status').style.display = 'none';
+            document.getElementById('host-lobby-status').classList.remove('active');
+            document.getElementById('create-lobby-panel').style.display = 'none';
+            document.getElementById('lobby-settings-panel').classList.remove('active');
+            document.getElementById('pause-overlay').style.display = 'none';
+            if (isMobile) document.getElementById('joystick-container').style.display = 'none';
+        }
+
         function triggerSelfDestruct() {
-            if (player && !isDead) {
-                shatterEntity(player);
-                player.toBeRemoved = true; 
-                triggerGameOver("Self Destructed");
+            if (!player || isDead) return;
+
+            // Notify others and disconnect immediately
+            if (peer && !peer.destroyed) {
+                const deleteMsg = JSON.stringify({ type: 'sync', payload: { id: peer.id, deleted: true } });
+                if (isLobbyHost) {
+                    lobbyConnections.forEach(c => { if (c.open) c.send(deleteMsg); });
+                } else if (activeConnection && activeConnection.open) {
+                    activeConnection.send(deleteMsg);
+                }
             }
+            if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
+            activeConnection = null;
+            lobbyConnections = [];
+            isLobbyHost = false;
+
+            // Trigger explosion and start the death sequence — game keeps running
+            shatterEntity(player);
+            player.toBeRemoved = true;
+            isDead = true;
+            deathTimer = DEATH_DURATION_FRAMES;
+
+            // Hide in-game UI
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('minimap').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('mobile-controls').style.display = 'none';
+            resetMultiplayerUI();
+
+            // Set the title that will appear when the fade completes
+            document.getElementById('menu-title').innerText = "LEFT SERVER";
+            document.getElementById('menu-title').style.color = "#94a3b8";
         }
 
         function triggerPurgeOrbit() {
@@ -1110,24 +2015,64 @@
         function update() {
             frameCount++;
             if (!isPlaying) return;
-            
+
+            // Keep host name in sync with the player entity (handles randomly-generated names)
+            if (isLobbyHost && player && player.name && player.name !== hostName) {
+                hostName = player.name;
+                updateHUDLobbyInfo();
+            }
+
+            if (isPaused) {
+                if (!isLobbyHost) {
+                    document.getElementById('pause-overlay').style.display = 'flex';
+                    document.getElementById('pause-message').textContent = `Paused by ${hostName || 'Host'}`;
+                }
+                return;
+            } else {
+                document.getElementById('pause-overlay').style.display = 'none';
+            }
+
+            // Network Sync
+            if (peer && !peer.destroyed && player && !isDead) {
+                const syncData = {
+                    type: 'sync',
+                    payload: {
+                        id: peer.id,
+                        name: player.name,
+                        x: player.x,
+                        y: player.y,
+                        mass: player.mass,
+                        radius: player.radius,
+                        textureIdx: selectedPlanetIdx,
+                        capturingEnabled: player.capturingEnabled
+                    }
+                };
+                const msg = JSON.stringify(syncData);
+                if (isLobbyHost) {
+                    lobbyConnections.forEach(c => { if(c.open) c.send(msg); });
+                } else if (activeConnection && activeConnection.open) {
+                    activeConnection.send(msg);
+                }
+            }
+
             if (isDead) {
                 deathTimer--;
                 if (deathTimer <= 0) {
                     bgMusic.pause(); bgMusic.currentTime = 0;
                     isPlaying = false;
+                    document.getElementById('mobile-controls').style.display = 'none';
                     const ov = document.getElementById('menu-overlay');
                     ov.style.display = 'flex'; ov.style.opacity = '1'; ov.style.pointerEvents = 'auto';
                 }
             }
-            
+
             const isBurstingInput = isMobile ? mobileBurstDown : mouse.down;
             if (isBurstingInput && player && !isDead) handleMassEjection();
 
             entities.forEach(ent => {
-                if (ent.toBeRemoved) return;
+                if (ent.toBeRemoved || ent.isRemote) return;
                 ent.isBurstingNow = false;
-                
+
                 if (ent.uncollectableBy) {
                     const host = entities.find(e => e.id === ent.uncollectableBy);
                     if (!host || Math.sqrt((ent.x-host.x)**2 + (ent.y-host.y)**2) > getGravityRadius(host.radius)) ent.uncollectableBy = null;
@@ -1171,11 +2116,11 @@
                         const wellRadius = getGravityRadius(ent.capturedBy.radius);
                         const pullFactor = 1.0 + (1.0 - (ent.orbitDist / wellRadius)) * 2.0;
                         ent.orbitDist -= pullFactor; 
-                        
+
                         ent.orbitAngle += 0.05;
                         ent.x = ent.capturedBy.x + Math.cos(ent.orbitAngle) * ent.orbitDist;
                         ent.y = ent.capturedBy.y + Math.sin(ent.orbitAngle) * ent.orbitDist;
-                        
+
                         // Break free if you managed to push yourself outside the gravity well
                         if (ent.orbitDist > wellRadius) {
                             ent.capturedBy = null;
@@ -1193,8 +2138,13 @@
 
                 let tx = 0, ty = 0;
                 if (ent.isPlayer) {
-                    const mouseWorld = screenToWorld(mouse.x, mouse.y);
-                    tx = mouseWorld.x - ent.x; ty = mouseWorld.y - ent.y;
+                    if (isMobile && mobileControlMode === 'joystick') {
+                        tx = joystick.x;
+                        ty = joystick.y;
+                    } else {
+                        const mouseWorld = screenToWorld(mouse.x, mouse.y);
+                        tx = mouseWorld.x - ent.x; ty = mouseWorld.y - ent.y;
+                    }
                 } else {
                     let closestThreat = null, threatDist = Infinity, closestPrey = null, preyDist = Infinity;
                     const detectionRange = getGravityRadius(ent.radius) * (3 + ent.niceness * 2);
@@ -1390,11 +2340,11 @@
                 centerWeight = Math.min(1, ((viewRadius * 2) / (MAP_RADIUS *2) - centeringThreshold) / 0.15);
                 camera.x += (player.x * (1 - centerWeight) - camera.x) * 0.1;
                 camera.y += (player.y * (1 - centerWeight) - camera.y) * 0.1;
-                
+
                 document.getElementById('mass-val').innerText = formatMass(player.mass);
                 const totalInWell = food.filter(f => f.capturedBy === player).length + entities.filter(e => e.capturedBy === player).length;
                 document.getElementById('orbit-count').innerText = totalInWell;
-                
+
                 const statusLabel = document.getElementById('orbit-status');
                 const capturedNameSpan = document.getElementById('captured-name');
                 if (player.capturedBy) {
@@ -1416,9 +2366,22 @@
         function triggerGameOver(killerName) {
             if (isDead) return;
             isDead = true; deathTimer = DEATH_DURATION_FRAMES; 
+
+            // Notify others of deletion
+            if (peer && !peer.destroyed && player) {
+                const deleteMsg = JSON.stringify({ type: 'sync', payload: { id: peer.id, deleted: true } });
+                if (isLobbyHost) {
+                    lobbyConnections.forEach(c => { if(c.open) c.send(deleteMsg); });
+                } else if (activeConnection && activeConnection.open) {
+                    activeConnection.send(deleteMsg);
+                }
+            }
+
             document.getElementById('hud').style.display = 'none';
             document.getElementById('minimap').style.display = 'none';
             document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('mobile-controls').style.display = 'none';
+            resetMultiplayerUI();
             if (isDuel) {
                 // Duel loss: clear "you lose" state
                 isPlaying = false;
@@ -1449,10 +2412,10 @@
             bgMusic.pause(); 
             bgMusic.currentTime = 0;
 
-            // Hide in-game HUD elements
             document.getElementById('hud').style.display = 'none';
             document.getElementById('minimap').style.display = 'none';
             document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('mobile-controls').style.display = 'none';
 
             // Bring back menu overlay with a clear victory message
             const ov = document.getElementById('menu-overlay');
@@ -1476,6 +2439,7 @@
             document.getElementById('hud').style.display = 'none';
             document.getElementById('minimap').style.display = 'none';
             document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('mobile-controls').style.display = 'none';
 
             const ov = document.getElementById('menu-overlay');
             ov.style.display = 'flex';
@@ -1527,16 +2491,22 @@
             const vR = camera.x + (canvas.width / 2) / camera.zoom;
             const vT = camera.y - (canvas.height / 2) / camera.zoom;
             const vB = camera.y + (canvas.height / 2) / camera.zoom;
-            
+
             ctx.strokeStyle = '#4f46e5'; ctx.lineWidth = 15 / camera.zoom; 
             ctx.beginPath(); ctx.arc(0, 0, MAP_RADIUS, 0, Math.PI * 2); ctx.stroke();
             ctx.strokeStyle = 'rgba(255,255,255,0.015)';
             const step = 2000;
             for(let x = -MAP_RADIUS; x <= MAP_RADIUS; x += step) if (x >= vL - buffer && x <= vR + buffer) { ctx.beginPath(); ctx.moveTo(x, -MAP_RADIUS); ctx.lineTo(x, MAP_RADIUS); ctx.stroke(); }
             for(let y = -MAP_RADIUS; y <= MAP_RADIUS; y += step) if (y >= vT - buffer && y <= vB + buffer) { ctx.beginPath(); ctx.moveTo(-MAP_RADIUS, y); ctx.lineTo(MAP_RADIUS, y); ctx.stroke(); }
-            
+
             food.forEach(f => {
                 if (f.x < vL - buffer || f.x > vR + buffer || f.y < vT - buffer || f.y > vB + buffer) return;
+
+                if (useLDM && player) {
+                    const d = Math.sqrt((f.x - player.x)**2 + (f.y - player.y)**2);
+                    if (d > ldmRadius) return;
+                }
+
                 ctx.fillStyle = f.color;
                 const visualSize = f.mass > 15 ? 45 : 25;
                 ctx.beginPath(); ctx.arc(f.x, f.y, visualSize, 0, Math.PI*2); ctx.fill();
@@ -1551,10 +2521,10 @@
             entities.sort((a,b)=>a.mass-b.mass).forEach(ent => {
                 const gRadius = getGravityRadius(ent.radius);
                 if (ent.x < vL - gRadius - buffer || ent.x > vR + gRadius + buffer || ent.y < vT - gRadius - buffer || ent.y > vB + gRadius + buffer) return;
-                
+
                 ctx.save();
                 ctx.translate(ent.x, ent.y);
-                
+
                 // Show gravity well only if capturing is enabled
                 if (ent.capturingEnabled) {
                     ctx.strokeStyle = (ent.isPlayer ? 'rgba(129, 140, 248, 0.4)' : 'rgba(255,255,255,0.06)');
@@ -1618,6 +2588,25 @@
             }
         }
         function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+
+        function copyToClipboard(text) {
+            if (!text || text === '******') return;
+            navigator.clipboard.writeText(text).catch(() => {});
+            const toast = document.createElement('div');
+            toast.textContent = 'Code copied!';
+            toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#22c55e;color:#000;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;z-index:9999;pointer-events:none;';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 1500);
+        }
+
+        document.getElementById('lobby-code-display').addEventListener('click', () => {
+            copyToClipboard(originalLobbyCode || lobbyCode);
+        });
+        document.getElementById('hud-lobby-code').addEventListener('click', () => {
+            const codeSpan = document.getElementById('hud-lobby-code');
+            copyToClipboard(codeSpan.textContent);
+        });
+
         init();
     </script>
 </body>
