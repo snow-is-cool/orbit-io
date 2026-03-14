@@ -196,23 +196,18 @@
         }
         #capture-toggle-btn.off { background: rgba(255, 255, 255, 0.05); color: #6b7280; border-color: #374151; }
 
-        #menu-home-btn {
-            position: fixed; top: 0; left: 0; z-index: 25;
+        #homeButton {
+            position: fixed; top: 0.25rem; left: 0.25rem; z-index: 25;
             display: flex; align-items: center; justify-content: center;
-            width: 48px; height: 48px; min-width: 48px; min-height: 48px; padding: 0;
-            margin: 0; border: none; border-radius: 0 0 12px 0;
+            width: 34px; height: 34px; padding: 0;
+            margin: 0; border: none; border-radius: 8px;
             background: rgba(0, 0, 0, 0.6); cursor: pointer; overflow: hidden;
-            border-right: 1px solid rgba(255, 255, 255, 0.15);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             text-decoration: none;
-            top: env(safe-area-inset-top, 0);
-            left: env(safe-area-inset-left, 0);
         }
-        #menu-home-btn:hover { background: rgba(129, 140, 248, 0.35); }
-        #menu-home-btn:active { background: rgba(129, 140, 248, 0.5); }
-        #menu-home-btn img { width: 28px; height: 28px; object-fit: contain; display: block; }
-        #menu-home-btn .home-fallback { display: none; font-size: 0.85rem; color: #94a3b8; }
-        #menu-home-btn img[src=""] + .home-fallback { display: block; }
+        #homeButton:hover { background: rgba(129, 140, 248, 0.35); }
+        #homeButton:active { background: rgba(129, 140, 248, 0.5); }
+        #homeButton img { width: 28px; height: 28px; padding: 3px; object-fit: contain; display: block; }
 
         .menu-section-arrow {
             width: 44px; height: 44px; min-width: 44px; min-height: 44px;
@@ -284,7 +279,7 @@
         #menu-overlay { 
             position: absolute; 
             inset: 0; 
-            background: radial-gradient(circle, rgba(10,10,20,0.85) 0%, rgba(0,0,0,0.95) 100%); 
+            background: radial-gradient(circle, rgba(10,10,20,0.45) 0%, rgba(0,0,0,0.6) 100%); 
             display: flex; 
             flex-direction: column;
             align-items: center; 
@@ -516,9 +511,8 @@
         </div>
 
         <div id="menu-overlay" class="interactive">
-            <a href="https://snow-is-cool.github.io" id="menu-home-btn" class="interactive" title="Back to home">
-                <img src="https://raw.githubusercontent.com/snow-is-cool/orbit-io/main/tohome.png" alt="Home" crossorigin="anonymous" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                <span class="home-fallback">Home</span>
+            <a href="https://snow-is-cool.github.io" id="homeButton" class="home-button">
+                <img src="https://raw.githubusercontent.com/snow-is-cool/orbit-io/refs/heads/main/tohome.png" alt="Home">
             </a>
             <div style="position: relative; width: 90%; max-width: 440px;">
                 <button id="menu-arrow-left" class="menu-section-arrow interactive hidden" onclick="setMenuSection(1)" style="position: absolute; left: -56px; top: 50%; transform: translateY(-50%); z-index: 10;">&#8249;</button>
