@@ -16,7 +16,8 @@
         .ui-layer { position: absolute; inset: 0; pointer-events: none; color: white; z-index: 10; }
         .interactive { pointer-events: auto; }
         #hud { position: fixed; bottom: 20px; left: 20px; font-size: 1.2rem; display: flex; flex-direction: column; gap: 10px; z-index: 20; bottom: max(20px, env(safe-area-inset-bottom)); left: max(20px, env(safe-area-inset-left)); }
-        #minimap { position: fixed; bottom: 20px; right: 20px; width: 150px; height: 150px; background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; z-index: 20; bottom: max(20px, env(safe-area-inset-bottom)); right: max(20px, env(safe-area-inset-right)); }
+        #minimap { position: fixed; bottom: max(20px, env(safe-area-inset-bottom)); right: max(20px, env(safe-area-inset-right)); width: 150px; height: 150px; background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 8px; overflow: hidden; z-index: 20; transition: opacity 0.3s; }
+        #minimap.left-side { right: auto; left: max(20px, env(safe-area-inset-left)); }
 
         #loading-screen {
             position: fixed;
@@ -85,41 +86,6 @@
             margin-top: 5px;
         }
         #self-destruct:hover { background: rgba(239, 68, 68, 0.4); }
-
-        #lobby-settings-btn {
-            background: rgba(129, 140, 248, 0.2);
-            border: 1px solid rgba(129, 140, 248, 0.5);
-            color: #818cf8;
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            backdrop-filter: blur(4px);
-            transition: all 0.2s;
-        }
-        #lobby-settings-btn.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            filter: grayscale(1);
-        }
-        #lobby-settings-panel {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(15, 23, 42, 0.95);
-            border: 1px solid rgba(129, 140, 248, 0.3);
-            padding: 20px;
-            border-radius: 16px;
-            z-index: 1000;
-            display: none;
-            width: 300px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
-        }
-        #lobby-settings-panel.active { display: block; pointer-events: auto; }
 
         #pause-overlay {
             position: fixed;
@@ -242,16 +208,46 @@
             color: white;
             padding: 15px;
             border-radius: 50%;
-            width: 80px;
-            height: 80px;
+            width: 70px;
+            height: 70px;
             font-weight: bold;
             display: none;
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 15px rgba(129, 140, 248, 0.3);
         }
         #mobile-burst:disabled { opacity: 0.3; border-color: gray; color: gray; }
-        #mobile-controls { bottom: max(20px, env(safe-area-inset-bottom)); }
+        #mobile-controls { 
+            position: fixed;
+            bottom: max(20px, env(safe-area-inset-bottom));
+            right: calc(max(20px, env(safe-area-inset-right)) + 170px);
+            z-index: 50;
+            display: none;
+        }
+
+        /* Keybind Settings Styles */
+        .keybind-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 0.75rem; color: #94a3b8; }
+        .keybind-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; min-width: 60px; text-align: center; color: white; cursor: pointer; }
+        .keybind-btn.waiting { background: rgba(129, 140, 248, 0.3); border-color: #818cf8; }
+
+        #hud-toggle-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            margin-bottom: 5px;
+        }
+        #hud-toggle-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .hud-hidden #hud-controls-container { display: none; }
 
         #leaderboard { 
             position: fixed; 
@@ -447,6 +443,95 @@
             50% { color: #white; text-shadow: none; }
         }
         .danger-pulse { animation: pulse-red 1s infinite; font-weight: bold; }
+
+        #ingame-settings-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 310px;
+            background: rgba(10, 10, 15, 0.97);
+            border: 1px solid rgba(129, 140, 248, 0.3);
+            padding: 20px;
+            border-radius: 16px;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+            pointer-events: auto;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        #ingame-settings-panel.active { display: block; }
+        .ig-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 14px; gap: 2px; }
+        .ig-tab { flex: 1; padding: 8px 4px; text-align: center; font-size: 10px; text-transform: uppercase; cursor: pointer; color: rgba(255,255,255,0.4); border-bottom: 2px solid transparent; transition: all 0.2s; font-weight: 700; letter-spacing: 0.05em; }
+        .ig-tab.active { color: #818cf8; border-bottom-color: #818cf8; }
+        .ig-tab-content { display: none; }
+        .ig-tab-content.active { display: block; }
+        .ig-setting-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 0.8rem; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .ig-setting-row:last-child { border-bottom: none; }
+        .ig-slider-group { padding: 6px 0; }
+        .ig-slider-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+
+        #ingame-settings-btn {
+            position: fixed;
+            top: max(20px, env(safe-area-inset-top));
+            right: calc(max(20px, env(safe-area-inset-right)) + 54px);
+            width: 44px;
+            height: 44px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #818cf8;
+            z-index: 20;
+            transition: background 0.2s;
+        }
+        #ingame-settings-btn:hover { background: rgba(129, 140, 248, 0.2); }
+
+        #minimap-toggle-btn {
+            position: fixed;
+            bottom: calc(max(20px, env(safe-area-inset-bottom)) + 158px);
+            right: max(20px, env(safe-area-inset-right));
+            width: 150px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 9px;
+            color: rgba(255,255,255,0.45);
+            z-index: 21;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            text-transform: uppercase;
+            gap: 5px;
+        }
+        #minimap-toggle-btn.left-side { right: auto; left: max(20px, env(safe-area-inset-left)); }
+        #minimap-toggle-btn:hover { color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.65); }
+
+        #hud-actions-toggle-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255,255,255,0.35);
+            width: 100%;
+            height: 22px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 10px;
+            letter-spacing: 0.05em;
+        }
+        #hud-actions-toggle-btn:hover { color: white; background: rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
@@ -477,6 +562,23 @@
                 <input type="range" id="sfxVolume" min="0" max="100" value="60" oninput="updateVolume('sfx', this.value)">
             </div>
 
+            <div id="pc-control-settings" class="flex flex-col gap-2 mb-4">
+                <span class="text-xs text-gray-400 uppercase tracking-widest font-bold">PC Controls</span>
+                <div class="flex gap-2 mb-2">
+                    <button id="pc-ctrl-mouse" class="flex-1 py-1 text-[10px] rounded bg-indigo-600 text-white" onclick="setPCControlMode('mouse')">Mouse</button>
+                    <button id="pc-ctrl-kb" class="flex-1 py-1 text-[10px] rounded bg-white/10 text-gray-400" onclick="setPCControlMode('keyboard')">Keyboard</button>
+                </div>
+                <div id="keybind-settings" style="display:none">
+                    <div class="keybind-row"><span>Up</span><button class="keybind-btn" onclick="startRebind('up')" id="kb-up">W</button></div>
+                    <div class="keybind-row"><span>Down</span><button class="keybind-btn" onclick="startRebind('down')" id="kb-down">S</button></div>
+                    <div class="keybind-row"><span>Left</span><button class="keybind-btn" onclick="startRebind('left')" id="kb-left">A</button></div>
+                    <div class="keybind-row"><span>Right</span><button class="keybind-btn" onclick="startRebind('right')" id="kb-right">D</button></div>
+                    <div class="keybind-row"><span>Burst</span><button class="keybind-btn" onclick="startRebind('burst')" id="kb-burst">Space</button></div>
+                    <div class="keybind-row"><span>Gravity Well</span><button class="keybind-btn" onclick="startRebind('gravityWell')" id="kb-gravityWell">G</button></div>
+                    <div class="keybind-row"><span>Purge Orbit</span><button class="keybind-btn" onclick="startRebind('purge')" id="kb-purge">P</button></div>
+                </div>
+            </div>
+
             <div id="mobile-control-settings" class="flex flex-col gap-2 mb-4" style="display:none">
                 <span class="text-xs text-gray-400 uppercase tracking-widest font-bold">Mobile Controls</span>
                 <div class="flex gap-2">
@@ -488,6 +590,10 @@
             <div class="flex items-center justify-between mb-2">
                 <span class="text-sm text-gray-300">Low Detail Mode (LDM)</span>
                 <input type="checkbox" id="ldm-toggle" onchange="updateLDMSettings()">
+            </div>
+            <div id="haptics-setting" class="flex items-center justify-between mb-2" style="display:none">
+                <span class="text-sm text-gray-300">Haptic Feedback</span>
+                <input type="checkbox" id="haptics-toggle" onchange="updateHaptics()">
             </div>
             <div id="ldm-radius-container" class="flex items-center justify-between mb-4" style="display:none">
                 <span class="text-xs text-gray-400">LDM Radius</span>
@@ -531,6 +637,7 @@
                 </div>
                 <div id="planet-display-name" class="planet-name">Earth</div>
                 <input type="text" id="playerName" placeholder="Captain Name" maxlength="15">
+                <button id="btn-respawn" class="btn-play mb-4" style="display: none; width: 100%;" onclick="respawn()">RESPAWN</button>
 
                 <div id="menu-section-standard" class="active">
                     <div class="server-dropdown-container">
@@ -621,44 +728,100 @@
         </div>
 
         <div id="hud" style="display:none">
-            <div class="flex items-center gap-2">
-                <div id="server-label" class="text-indigo-400 font-bold">Endless Mode</div>
-            </div>
-            <div>Mass: <span id="mass-val" class="font-mono text-indigo-300">0</span></div>
-            <div id="orbit-status" class="text-xs text-gray-400">Captured By: <span id="captured-name" class="text-white">None</span></div>
-            <div id="orbit-count-ui" class="text-[10px] text-gray-500">Items In Orbit: <span id="orbit-count" class="text-white">0</span></div>
-            <div id="lobby-info-ui" class="text-[10px] text-indigo-400 mt-1" style="display:none">
-                Lobby: <span id="hud-lobby-code" class="text-white"></span> | Host: <span id="hud-host-name" class="text-white"></span>
-            </div>
+            <button id="hud-toggle-btn" class="interactive" onclick="toggleHUDVisibility()" title="Toggle UI">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+            <div id="hud-controls-container">
+                <div class="flex items-center gap-2">
+                    <div id="server-label" class="text-indigo-400 font-bold">Endless Mode</div>
+                </div>
+                <div>Mass: <span id="mass-val" class="font-mono text-indigo-300">0</span></div>
+                <div id="orbit-status" class="text-xs text-gray-400">Captured By: <span id="captured-name" class="text-white">None</span></div>
+                <div id="orbit-count-ui" class="text-[10px] text-gray-500">Items In Orbit: <span id="orbit-count" class="text-white">0</span></div>
+                <div id="lobby-info-ui" class="text-[10px] text-indigo-400 mt-1" style="display:none">
+                    Lobby: <span id="hud-lobby-code" class="text-white"></span> | Host: <span id="hud-host-name" class="text-white"></span>
+                </div>
 
-            <div class="flex flex-col gap-2">
-                <div class="zoom-controls interactive">
-                    <button class="zoom-btn" onclick="manualZoom(1.5)">+</button>
-                    <button class="zoom-btn" onclick="manualZoom(0.5)">-</button>
-                    <button id="toggle-names-btn" class="zoom-btn toggle-btn" onclick="toggleNames()">NAMES ON</button>
-                    <button id="lobby-settings-btn" class="disabled" onclick="toggleLobbySettings()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
-                    </button>
+                <div class="flex flex-col gap-2 mt-1">
+                    <div class="zoom-controls interactive">
+                        <button class="zoom-btn" onclick="manualZoom(1.5)">+</button>
+                        <button class="zoom-btn" onclick="manualZoom(0.5)">-</button>
+                        <button id="toggle-names-btn" class="zoom-btn toggle-btn" onclick="toggleNames()">NAMES ON</button>
+                    </div>
+                    <button id="hud-actions-toggle-btn" class="interactive" onclick="toggleHUDActions()">&#x25BE; ACTIONS</button>
+                    <div id="hud-actions-container" class="flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <button id="capture-toggle-btn" class="interactive flex-1" onclick="togglePlayerCapture()">Gravity Well: ON</button>
+                            <button id="purge-orbit" class="interactive flex-1" onclick="triggerPurgeOrbit()">Purge Orbit</button>
+                        </div>
+                    </div>
+                    <button id="self-destruct" class="interactive flex-1" onclick="triggerSelfDestruct()">Leave Server</button>
                 </div>
-                <div class="flex gap-2">
-                    <button id="capture-toggle-btn" class="interactive flex-1" onclick="togglePlayerCapture()">Gravity Well: ON</button>
-                    <button id="purge-orbit" class="interactive flex-1" onclick="triggerPurgeOrbit()">Purge Orbit</button>
-                </div>
-                <button id="self-destruct" class="interactive flex-1" onclick="triggerSelfDestruct()">Leave Server</button>
             </div>
         </div>
 
-        <div id="lobby-settings-panel">
-            <h3 class="text-indigo-400 font-bold mb-4">Lobby Settings</h3>
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-sm text-gray-300">Show Code for Others</span>
-                <input type="checkbox" id="show-code-toggle" onchange="updateLobbySettings()">
+        <div id="ingame-settings-panel" class="interactive">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-indigo-400 font-bold text-sm uppercase tracking-widest">Settings</h3>
+                <button onclick="toggleIngameSettings()" class="text-gray-500 hover:text-white text-xl leading-none">&times;</button>
             </div>
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-sm text-gray-300">Pause Game</span>
-                <input type="checkbox" id="pause-game-toggle" onchange="updateLobbySettings()">
+            <div class="ig-tabs">
+                <div id="ig-tab-display" class="ig-tab active" onclick="setIngameSettingsTab('display')">Display</div>
+                <div id="ig-tab-lobby" class="ig-tab" onclick="setIngameSettingsTab('lobby')" style="display:none">Lobby</div>
             </div>
-            <button class="btn-play rounded-xl py-2 text-sm w-full mt-4" onclick="toggleLobbySettings()">Close</button>
+
+            <div id="ig-content-display" class="ig-tab-content active">
+                <div class="ig-slider-group">
+                    <div class="ig-slider-label"><span>Music</span><span id="ig-music-vol-txt">40%</span></div>
+                    <input type="range" id="ig-music-vol" min="0" max="100" value="40" oninput="updateVolume('music', this.value); document.getElementById('ig-music-vol-txt').textContent=this.value+'%'">
+                </div>
+                <div class="ig-slider-group">
+                    <div class="ig-slider-label"><span>SFX</span><span id="ig-sfx-vol-txt">60%</span></div>
+                    <input type="range" id="ig-sfx-vol" min="0" max="100" value="60" oninput="updateVolume('sfx', this.value); document.getElementById('ig-sfx-vol-txt').textContent=this.value+'%'">
+                </div>
+                <div class="ig-slider-group">
+                    <div class="ig-slider-label"><span>Minimap Opacity</span><span id="minimap-alpha-txt">85%</span></div>
+                    <input type="range" id="minimap-alpha-slider" min="10" max="100" value="85" oninput="applyMinimapAlpha(this.value/100)">
+                </div>
+                <div class="ig-setting-row">
+                    <span>Minimap</span>
+                    <input type="checkbox" id="ig-minimap-toggle" onchange="toggleMinimap()" checked>
+                </div>
+                <div class="ig-setting-row">
+                    <span>Screen Shake</span>
+                    <input type="checkbox" id="ig-screenshake-toggle" onchange="toggleScreenShake(this.checked)">
+                </div>
+                <div class="ig-setting-row">
+                    <span>Show Names</span>
+                    <input type="checkbox" id="ig-names-toggle" onchange="toggleNamesFromSettings(this.checked)" checked>
+                </div>
+                <div class="ig-setting-row">
+                    <span>Low Detail Mode</span>
+                    <input type="checkbox" id="ig-ldm-toggle" onchange="useLDM=this.checked; document.getElementById('ldm-toggle').checked=this.checked; updateLDMSettings()">
+                </div>
+                <div id="ig-mobile-side" class="ig-setting-row" style="display:none">
+                    <span>Minimap Side</span>
+                    <div class="flex gap-1">
+                        <button id="mm-side-left" class="flex-1 py-1 px-2 text-[10px] rounded bg-white/10 text-gray-400" onclick="applyMinimapSide(true)">Left</button>
+                        <button id="mm-side-right" class="flex-1 py-1 px-2 text-[10px] rounded bg-indigo-600 text-white" onclick="applyMinimapSide(false)">Right</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="ig-content-lobby" class="ig-tab-content">
+                <div class="ig-slider-group">
+                    <div class="ig-slider-label"><span>Lobby Name</span></div>
+                    <input type="text" id="ig-lobby-name" maxlength="24" placeholder="Untitled Server" style="width:100%;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:white;font-size:14px;margin-top:2px;" oninput="updateLobbySettings()">
+                </div>
+                <div class="ig-setting-row">
+                    <span>Show Code for Others</span>
+                    <input type="checkbox" id="show-code-toggle" onchange="updateLobbySettings()">
+                </div>
+                <div class="ig-setting-row">
+                    <span>Pause Game</span>
+                    <input type="checkbox" id="pause-game-toggle" onchange="updateLobbySettings()">
+                </div>
+            </div>
         </div>
 
         <div id="pause-overlay" style="display:none">
@@ -669,7 +832,14 @@
             </div>
         </div>
 
+        <div id="minimap-toggle-btn" class="interactive" onclick="toggleMinimap()" style="display:none">
+            <span id="minimap-toggle-label">&#9660; MAP</span>
+        </div>
         <div id="minimap" style="display:none"><canvas id="minimapCanvas"></canvas></div>
+
+        <button id="ingame-settings-btn" class="interactive" onclick="toggleIngameSettings()" title="Settings" style="display:none">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
 
         <div id="leaderboard" class="interactive" style="display:none">
             <div id="leaderboard-header" onclick="toggleLeaderboard()">
@@ -691,7 +861,7 @@
             <div id="joystick-knob"></div>
         </div>
 
-        <div id="mobile-controls" style="position: fixed; bottom: 40px; right: 40px; z-index: 50; display: none;">
+        <div id="mobile-controls">
             <button id="mobile-burst" class="interactive w-20 h-20 rounded-full bg-indigo-600/60 border-2 border-white/20 text-white font-bold text-xs shadow-lg active:scale-90 transition-transform">BURST</button>
         </div>
     </div>
@@ -736,16 +906,19 @@
 
         let camera = { x: 0, y: 0, zoom: 0.8, targetZoom: 0.8, manualZoomFactor: 1.0 };
         let sfxVol = 0.6;
+        let musicVol = 0.4;
 
         function updateVolume(type, val) {
             const normalized = val / 100;
             if (type === 'music') {
+                musicVol = normalized;
                 bgMusic.volume = normalized;
                 document.getElementById('music-vol-txt').innerText = val + '%';
             } else {
                 sfxVol = normalized;
                 document.getElementById('sfx-vol-txt').innerText = val + '%';
             }
+            saveSettings();
         }
 
         function playSpatialSound(audioNode, x, y, baseVolume) {
@@ -888,6 +1061,20 @@
         let localLobbies = [];
         let peer = null;
         let isLobbyHost = false;
+        let pcControlMode = 'mouse';
+        let mobileControlMode = 'tap-to-move';
+        let keybinds = {
+            up: 'KeyW',
+            down: 'KeyS',
+            left: 'KeyA',
+            right: 'KeyD',
+            burst: 'Space',
+            gravityWell: 'KeyG',
+            purge: 'KeyP'
+        };
+        let keyboard = {};
+        let rebindingKey = null;
+        let hudVisible = true;
         let lobbyConnections = [];
         let activeConnection = null; // For client to host
         let hostLobbyConfig = null;
@@ -898,10 +1085,17 @@
         let lobbyName = '';
         let joinOrder = []; // To track who is next host
         let gameStarted = false; // True once the host has started the game
+        let lastGameConfig = null;
         let isPaused = false;
         let useLDM = false;
         let ldmRadius = 2000;
-        let mobileControlMode = 'tap-to-move'; 
+        let hapticsEnabled = false;
+        let showMinimap = true;
+        let minimapOnLeft = false;
+        let minimapAlpha = 0.85;
+        let screenShakeEnabled = false;
+        let screenShakeAmount = 0;
+        let hudActionsVisible = true;
         let joystick = { active: false, x: 0, y: 0, startX: 0, startY: 0, currentX: 0, currentY: 0 };
         let pinchDist = 0;
         const LOBBY_CHANNEL = 'orbit-lobby-broadcast';
@@ -919,7 +1113,8 @@
 
         function init() {
             resize();
-
+            loadSettings();
+            
             setInterval(() => {
                 const tipEl = document.getElementById('loading-tip');
                 if (tipEl) {
@@ -984,7 +1179,13 @@
 
         function isInputPaused() {
             return document.getElementById('settings-panel').classList.contains('active') || 
-                   document.getElementById('lobby-settings-panel').classList.contains('active');
+                   document.getElementById('ingame-settings-panel').classList.contains('active');
+        }
+
+        function vibrate(pattern) {
+            if (isMobile && hapticsEnabled && navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
         }
 
         window.addEventListener('touchstart', (e) => {
@@ -1080,9 +1281,11 @@
               burstBtn.addEventListener('touchstart', (e) => { 
                   if (isInputPaused()) return;
                   mobileBurstDown = true; 
+                  vibrate(10);
                   if (player && player.capturedBy) {
                       player.orbitDist += ESCAPE_STRENGTH;
                       playSpatialSound(thumpSfx, player.x, player.y, 0.4);
+                      vibrate(15);
                   }
                   e.preventDefault(); 
               }, { passive: false });
@@ -1101,18 +1304,22 @@
                         const dy = touch.clientY - (rect.top + rect.height / 2);
                         if (Math.hypot(dx, dy) >= rect.width / 2 + 30) {
                             mobileBurstDown = true;
+                            vibrate(10);
                             if (player && player.capturedBy) {
                                 player.orbitDist += ESCAPE_STRENGTH;
                                 playSpatialSound(thumpSfx, player.x, player.y, 0.4);
+                                vibrate(15);
                             }
                         }
                     } else {
                         mouse.down = true; 
+                        vibrate(10);
                         mouse.x = e.touches[0].clientX; 
                         mouse.y = e.touches[0].clientY; 
                         if (player && player.capturedBy) {
                             player.orbitDist += ESCAPE_STRENGTH;
                             playSpatialSound(thumpSfx, player.x, player.y, 0.4);
+                            vibrate(15);
                         }
                     }
                 }
@@ -1136,6 +1343,29 @@
                 clampManualZoom();
             }, { passive: true });
 
+            window.addEventListener('keydown', (e) => {
+                if (rebindingKey) {
+                    keybinds[rebindingKey] = e.code;
+                    const btn = document.getElementById(`kb-${rebindingKey}`);
+                    if (btn) btn.classList.remove('waiting');
+                    rebindingKey = null;
+                    updateKeybindUI();
+                    saveSettings();
+                    return;
+                }
+                keyboard[e.code] = true;
+
+                if (isPlaying && !isDead && !isInputPaused()) {
+                    if (e.code === keybinds.gravityWell) togglePlayerCapture();
+                    if (e.code === keybinds.purge) triggerPurgeOrbit();
+                    if (e.code === 'KeyM') toggleMinimap();
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                keyboard[e.code] = false;
+            });
+
             updatePreview();
             gameLoop();
         }
@@ -1150,6 +1380,7 @@
         }
         function togglePlayerCapture() {
             if (!player) return;
+            vibrate(15);
             const wasOn = player.capturingEnabled;
             player.capturingEnabled = !player.capturingEnabled;
             const btn = document.getElementById('capture-toggle-btn');
@@ -1179,6 +1410,111 @@
                 document.getElementById('ldm-radius-input').value = ldmRadius;
                 document.getElementById('ldm-radius-container').style.display = useLDM ? 'flex' : 'none';
             }
+        }
+
+        function toggleMinimap() {
+            showMinimap = !showMinimap;
+            const mm = document.getElementById('minimap');
+            if (mm && isPlaying) mm.style.display = showMinimap ? 'block' : 'none';
+            const lbl = document.getElementById('minimap-toggle-label');
+            if (lbl) lbl.innerHTML = showMinimap ? '&#9660; MAP' : '&#9650; MAP';
+            const igCheck = document.getElementById('ig-minimap-toggle');
+            if (igCheck) igCheck.checked = showMinimap;
+            saveSettings();
+        }
+
+        function applyMinimapAlpha(val) {
+            minimapAlpha = parseFloat(val);
+            const mm = document.getElementById('minimap');
+            if (mm) mm.style.opacity = minimapAlpha;
+            const txt = document.getElementById('minimap-alpha-txt');
+            if (txt) txt.textContent = Math.round(minimapAlpha * 100) + '%';
+            const slider = document.getElementById('minimap-alpha-slider');
+            if (slider) slider.value = Math.round(minimapAlpha * 100);
+            saveSettings();
+        }
+
+        function applyMinimapSide(left) {
+            minimapOnLeft = left;
+            const mm = document.getElementById('minimap');
+            const btn = document.getElementById('minimap-toggle-btn');
+            if (mm) mm.classList.toggle('left-side', left);
+            if (btn) btn.classList.toggle('left-side', left);
+            const lBtn = document.getElementById('mm-side-left');
+            const rBtn = document.getElementById('mm-side-right');
+            if (lBtn) lBtn.className = `flex-1 py-1 px-2 text-[10px] rounded ${left ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-400'}`;
+            if (rBtn) rBtn.className = `flex-1 py-1 px-2 text-[10px] rounded ${!left ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-400'}`;
+            saveSettings();
+        }
+
+        function toggleHUDActions() {
+            hudActionsVisible = !hudActionsVisible;
+            const container = document.getElementById('hud-actions-container');
+            if (container) container.style.display = hudActionsVisible ? 'flex' : 'none';
+            const btn = document.getElementById('hud-actions-toggle-btn');
+            if (btn) btn.innerHTML = hudActionsVisible ? '&#x25BE; ACTIONS' : '&#x25B4; ACTIONS';
+        }
+
+        function toggleScreenShake(checked) {
+            screenShakeEnabled = checked;
+            saveSettings();
+        }
+
+        function toggleNamesFromSettings(checked) {
+            showNames = checked;
+            const btn = document.getElementById('toggle-names-btn');
+            if (btn) { btn.innerText = showNames ? "NAMES ON" : "NAMES OFF"; btn.style.color = showNames ? "white" : "#6b7280"; }
+            saveSettings();
+        }
+
+        function toggleIngameSettings() {
+            const panel = document.getElementById('ingame-settings-panel');
+            if (!panel) return;
+            const opening = !panel.classList.contains('active');
+            if (opening) {
+                mouse.down = false;
+                joyActive = false;
+                mobileBurstDown = false;
+                const igMusicVol = document.getElementById('ig-music-vol');
+                if (igMusicVol) igMusicVol.value = Math.round(musicVol * 100);
+                const igMusicTxt = document.getElementById('ig-music-vol-txt');
+                if (igMusicTxt) igMusicTxt.textContent = Math.round(musicVol * 100) + '%';
+                const igSfxVol = document.getElementById('ig-sfx-vol');
+                if (igSfxVol) igSfxVol.value = Math.round(sfxVol * 100);
+                const igSfxTxt = document.getElementById('ig-sfx-vol-txt');
+                if (igSfxTxt) igSfxTxt.textContent = Math.round(sfxVol * 100) + '%';
+                const alphaSlider = document.getElementById('minimap-alpha-slider');
+                if (alphaSlider) alphaSlider.value = Math.round(minimapAlpha * 100);
+                const alphaTxt = document.getElementById('minimap-alpha-txt');
+                if (alphaTxt) alphaTxt.textContent = Math.round(minimapAlpha * 100) + '%';
+                const shakeToggle = document.getElementById('ig-screenshake-toggle');
+                if (shakeToggle) shakeToggle.checked = screenShakeEnabled;
+                const mmToggle = document.getElementById('ig-minimap-toggle');
+                if (mmToggle) mmToggle.checked = showMinimap;
+                const namesToggle = document.getElementById('ig-names-toggle');
+                if (namesToggle) namesToggle.checked = showNames;
+                const ldmToggle = document.getElementById('ig-ldm-toggle');
+                if (ldmToggle) ldmToggle.checked = useLDM;
+                const showCode = document.getElementById('show-code-toggle');
+                if (showCode) showCode.checked = showCodeForOthers;
+                const pauseToggle = document.getElementById('pause-game-toggle');
+                if (pauseToggle) pauseToggle.checked = isPaused;
+                const igLobbyName = document.getElementById('ig-lobby-name');
+                if (igLobbyName) igLobbyName.value = lobbyName;
+                const lobbyTab = document.getElementById('ig-tab-lobby');
+                if (lobbyTab) lobbyTab.style.display = isLobbyHost ? 'block' : 'none';
+                const mobileSideRow = document.getElementById('ig-mobile-side');
+                if (mobileSideRow) mobileSideRow.style.display = isMobile ? 'flex' : 'none';
+                applyMinimapSide(minimapOnLeft);
+            }
+            panel.classList.toggle('active');
+        }
+
+        function setIngameSettingsTab(tab) {
+            document.querySelectorAll('.ig-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.ig-tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById('ig-tab-' + tab).classList.add('active');
+            document.getElementById('ig-content-' + tab).classList.add('active');
         }
 
         function setMenuSection(n) {
@@ -1299,7 +1635,8 @@
                             lobbyConnections = lobbyConnections.filter(c => c !== conn);
                             joinOrder = joinOrder.filter(id => id !== conn.peer);
                             broadcastJoinOrder();
-                            document.getElementById('lobby-player-count').textContent = String(lobbyConnections.length + 1);
+                            const lpc = document.getElementById('lobby-player-count');
+                            if (lpc) lpc.textContent = String(lobbyConnections.length + 1);
                             updateRegistryLobbyCount(code, lobbyConnections.length + 1);
                             // Notify others that this player left
                             const deleteMsg = JSON.stringify({ type: 'sync', payload: { id: conn.peer, deleted: true } });
@@ -1308,6 +1645,8 @@
                         // Send current settings to new player
                         conn.send(JSON.stringify({ type: 'settings', showCode: showCodeForOthers, hostName, isPaused, lobbyName }));
                         broadcastJoinOrder();
+                        const lpc = document.getElementById('lobby-player-count');
+                        if (lpc) lpc.textContent = String(lobbyConnections.length + 1);
                         // If game already started, send start immediately so late joiner skips the wait screen
                         if (gameStarted && hostLobbyConfig) {
                             const { serverType, foodMult } = hostLobbyConfig;
@@ -1367,21 +1706,19 @@
         }
 
         function toggleLobbySettings() {
-            const panel = document.getElementById('lobby-settings-panel');
-            const isActive = panel.classList.contains('active');
-            if (!isActive && !isLobbyHost) return;
-            panel.classList.toggle('active');
-
-            if (panel.classList.contains('active')) {
-                mouse.down = false;
-                joyActive = false;
-                mobileBurstDown = false;
-                document.getElementById('pause-game-toggle').checked = isPaused;
-            }
+            if (!isLobbyHost) return;
+            setIngameSettingsTab('lobby');
+            toggleIngameSettings();
         }
 
         function updateLobbySettings() {
             if (!isLobbyHost) return;
+            const nameEl = document.getElementById('ig-lobby-name');
+            if (nameEl && nameEl.value.trim()) {
+                lobbyName = nameEl.value.trim();
+                const disp = document.getElementById('lobby-name-display');
+                if (disp) disp.textContent = lobbyName;
+            }
             showCodeForOthers = document.getElementById('show-code-toggle').checked;
             isPaused = document.getElementById('pause-game-toggle').checked;
             broadcastSettings();
@@ -1391,6 +1728,125 @@
             useLDM = document.getElementById('ldm-toggle').checked;
             ldmRadius = parseInt(document.getElementById('ldm-radius-input').value, 10) || 2000;
             document.getElementById('ldm-radius-container').style.display = useLDM ? 'flex' : 'none';
+            saveSettings();
+        }
+
+        function updateHaptics() {
+            hapticsEnabled = document.getElementById('haptics-toggle').checked;
+            saveSettings();
+        }
+
+        function saveSettings() {
+            const settings = {
+                musicVolume: musicVol,
+                sfxVolume: sfxVol,
+                pcControlMode: pcControlMode,
+                mobileControlMode: mobileControlMode,
+                useLDM: useLDM,
+                ldmRadius: ldmRadius,
+                hapticsEnabled: hapticsEnabled,
+                keybinds: keybinds,
+                showNames: showNames,
+                showMinimap: showMinimap,
+                minimapOnLeft: minimapOnLeft,
+                minimapAlpha: minimapAlpha,
+                screenShakeEnabled: screenShakeEnabled
+            };
+            localStorage.setItem('orbit_io_settings', JSON.stringify(settings));
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('orbit_io_settings');
+            if (saved) {
+                try {
+                    const s = JSON.parse(saved);
+                    if (s.musicVolume !== undefined) {
+                        musicVol = s.musicVolume;
+                        document.getElementById('musicVolume').value = musicVol * 100;
+                        updateVolume('music', musicVol * 100);
+                    }
+                    if (s.sfxVolume !== undefined) {
+                        sfxVol = s.sfxVolume;
+                        document.getElementById('sfxVolume').value = sfxVol * 100;
+                        updateVolume('sfx', sfxVol * 100);
+                    }
+                    if (s.pcControlMode) setPCControlMode(s.pcControlMode);
+                    if (s.mobileControlMode) setMobileControlMode(s.mobileControlMode);
+                    if (s.useLDM !== undefined) {
+                        useLDM = s.useLDM;
+                        document.getElementById('ldm-toggle').checked = useLDM;
+                        updateLDMSettings();
+                    }
+                    if (s.ldmRadius) {
+                        ldmRadius = s.ldmRadius;
+                        document.getElementById('ldm-radius-input').value = ldmRadius;
+                    }
+                    if (s.hapticsEnabled !== undefined) {
+                        hapticsEnabled = s.hapticsEnabled;
+                        document.getElementById('haptics-toggle').checked = hapticsEnabled;
+                    }
+                    if (s.keybinds) {
+                        keybinds = { ...keybinds, ...s.keybinds };
+                        updateKeybindUI();
+                    }
+                    if (s.showNames !== undefined) {
+                        showNames = s.showNames;
+                        updateHUDControls();
+                    }
+                    if (s.showMinimap !== undefined) showMinimap = s.showMinimap;
+                    if (s.minimapOnLeft !== undefined) minimapOnLeft = s.minimapOnLeft;
+                    if (s.minimapAlpha !== undefined) minimapAlpha = s.minimapAlpha;
+                    if (s.screenShakeEnabled !== undefined) screenShakeEnabled = s.screenShakeEnabled;
+                } catch (e) {
+                    console.error("Failed to load settings", e);
+                }
+            } else {
+                // Defaults if no settings
+                setPCControlMode('mouse');
+                setMobileControlMode('tap-to-move');
+            }
+            
+            if (isMobile) {
+                document.getElementById('haptics-setting').style.display = 'flex';
+            }
+        }
+
+        function setPCControlMode(mode) {
+            pcControlMode = mode;
+            document.getElementById('pc-ctrl-mouse').className = `flex-1 py-1 text-[10px] rounded ${mode === 'mouse' ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-400'}`;
+            document.getElementById('pc-ctrl-kb').className = `flex-1 py-1 text-[10px] rounded ${mode === 'keyboard' ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-400'}`;
+            document.getElementById('keybind-settings').style.display = mode === 'keyboard' ? 'block' : 'none';
+            saveSettings();
+        }
+
+        function startRebind(action) {
+            rebindingKey = action;
+            const btn = document.getElementById(`kb-${action}`);
+            if (btn) { btn.textContent = '...'; btn.classList.add('waiting'); }
+        }
+
+        function updateKeybindUI() {
+            const display = code => code.replace('Key','').replace('Arrow','').replace('Digit','').replace('Space','Space').replace('ShiftLeft','L-Shift').replace('ShiftRight','R-Shift');
+            Object.keys(keybinds).forEach(action => {
+                const btn = document.getElementById(`kb-${action}`);
+                if (btn) btn.textContent = display(keybinds[action]);
+            });
+        }
+
+        function updateHUDControls() {
+            const btn = document.getElementById('toggle-names-btn');
+            if (btn) { btn.innerText = showNames ? 'NAMES ON' : 'NAMES OFF'; btn.style.color = showNames ? 'white' : '#6b7280'; }
+            const igNames = document.getElementById('ig-names-toggle');
+            if (igNames) igNames.checked = showNames;
+        }
+
+        function toggleHUDVisibility() {
+            hudVisible = !hudVisible;
+            const container = document.getElementById('hud-controls-container');
+            container.style.display = hudVisible ? 'flex' : 'none';
+            document.getElementById('hud-toggle-btn').innerHTML = hudVisible ? 
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>' :
+                '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
         }
 
         function setMobileControlMode(mode) {
@@ -1403,11 +1859,11 @@
                 document.getElementById('mobile-burst').style.display = mode === 'joystick' ? 'none' : 'flex';
                 if (mode === 'joystick') mobileBurstDown = false;
             }
+            saveSettings();
         }
 
         function updateHUDLobbyInfo() {
             const info = document.getElementById('lobby-info-ui');
-            const settingsBtn = document.getElementById('lobby-settings-btn');
 
             if (peer && !peer.destroyed && (isLobbyHost || activeConnection)) {
                 info.style.display = 'block';
@@ -1426,15 +1882,13 @@
                 }
                 hostSpan.textContent = hostName;
 
-                if (isLobbyHost) {
-                    settingsBtn.style.display = 'flex';
-                    settingsBtn.classList.remove('disabled');
-                } else {
-                    settingsBtn.style.display = 'none';
-                }
+                // Show/hide lobby tab in in-game settings based on host status
+                const lobbyTab = document.getElementById('ig-tab-lobby');
+                if (lobbyTab) lobbyTab.style.display = isLobbyHost ? 'block' : 'none';
             } else {
                 info.style.display = 'none';
-                settingsBtn.style.display = 'none';
+                const lobbyTab = document.getElementById('ig-tab-lobby');
+                if (lobbyTab) lobbyTab.style.display = 'none';
             }
         }
 
@@ -1565,6 +2019,9 @@
                                 joinOrder = msg.order;
                             } else if (msg.type === 'host-migration') {
                                 handleHostMigration(msg.newHostId, msg.newHostName);
+                            } else if (msg.type === 'host_left') {
+                                alert("Host has closed the lobby.");
+                                leaveLobby();
                             }
                         } catch (e) {}
                     });
@@ -1748,6 +2205,13 @@
         }
 
         function startGame(overrideConfig) {
+            lastGameConfig = overrideConfig;
+            isPlaying = true;
+            isDead = false;
+            deathTimer = 0;
+            const respawnBtn = document.getElementById('btn-respawn');
+            if (respawnBtn) respawnBtn.style.display = 'none';
+            
             const serverType = overrideConfig && overrideConfig.serverType != null ? overrideConfig.serverType : document.getElementById('serverSelect').value;
             let displayServer = "Small Server";
             let densityMultiplier = (overrideConfig && overrideConfig.densityMultiplier != null) ? overrideConfig.densityMultiplier : 1.0;
@@ -1784,7 +2248,21 @@
             overlay.scrollTo(0,0);
 
             document.getElementById('hud').style.display = 'flex';
-            document.getElementById('minimap').style.display = 'block';
+            const mmEl = document.getElementById('minimap');
+            if (mmEl) {
+                mmEl.style.display = showMinimap ? 'block' : 'none';
+                mmEl.style.opacity = minimapAlpha;
+                mmEl.classList.toggle('left-side', minimapOnLeft);
+            }
+            const mmToggleBtn = document.getElementById('minimap-toggle-btn');
+            if (mmToggleBtn) {
+                mmToggleBtn.style.display = 'flex';
+                mmToggleBtn.classList.toggle('left-side', minimapOnLeft);
+                const lbl = document.getElementById('minimap-toggle-label');
+                if (lbl) lbl.innerHTML = showMinimap ? '&#9660; MAP' : '&#9650; MAP';
+            }
+            const igBtn = document.getElementById('ingame-settings-btn');
+            if (igBtn) igBtn.style.display = 'flex';
             document.getElementById('leaderboard').style.display = 'block';
             if (isMobile) {
                 document.getElementById('mobile-controls').style.display = 'block';
@@ -1919,25 +2397,59 @@
         function resetMultiplayerUI() {
             gameStarted = false;
             hostLobbyConfig = null;
-            document.getElementById('join-code-input').parentElement.style.display = 'flex';
-            document.getElementById('btn-create-lobby-toggle').style.display = 'block';
-            document.getElementById('join-lobby-status').style.display = 'none';
+            const jci = document.getElementById('join-code-input');
+            if (jci && jci.parentElement) jci.parentElement.style.display = 'flex';
+            
+            const bclt = document.getElementById('btn-create-lobby-toggle');
+            if (bclt) bclt.style.display = 'block';
+            
+            const jls = document.getElementById('join-lobby-status');
+            if (jls) jls.style.display = 'none';
+            
             const hls = document.getElementById('host-lobby-status');
-            hls.style.display = '';
-            hls.classList.remove('active');
+            if (hls) {
+                hls.style.display = '';
+                hls.classList.remove('active');
+            }
+            
             const clp = document.getElementById('create-lobby-panel');
-            clp.style.display = '';
-            clp.classList.remove('active');
-            document.getElementById('lobby-settings-panel').classList.remove('active');
-            document.getElementById('pause-overlay').style.display = 'none';
-            if (isMobile) document.getElementById('joystick-container').style.display = 'none';
+            if (clp) {
+                clp.style.display = '';
+                clp.classList.remove('active');
+            }
+            
+            const igPanel = document.getElementById('ingame-settings-panel');
+            if (igPanel) igPanel.classList.remove('active');
+            
+            const po = document.getElementById('pause-overlay');
+            if (po) po.style.display = 'none';
+            
+            if (isMobile) {
+                const jc = document.getElementById('joystick-container');
+                if (jc) jc.style.display = 'none';
+            }
+        }
+
+        function respawn() {
+            if (lastGameConfig) {
+                startGame(lastGameConfig);
+            } else {
+                handlePlayClick();
+            }
         }
 
         function leaveLobby() {
+            if (isLobbyHost && peer && !peer.destroyed) {
+                lobbyConnections.forEach(c => {
+                    if (c.open) c.send(JSON.stringify({ type: 'host_left' }));
+                });
+            }
             if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
             activeConnection = null;
             lobbyConnections = [];
             isLobbyHost = false;
+            lobbyCode = '';
+            originalLobbyCode = '';
             resetMultiplayerUI();
         }
 
@@ -1965,10 +2477,7 @@
             deathTimer = DEATH_DURATION_FRAMES;
 
             // Hide in-game UI
-            document.getElementById('hud').style.display = 'none';
-            document.getElementById('minimap').style.display = 'none';
-            document.getElementById('leaderboard').style.display = 'none';
-            document.getElementById('mobile-controls').style.display = 'none';
+            hideIngameUI();
             resetMultiplayerUI();
 
             // Set the title that will appear when the fade completes
@@ -1978,6 +2487,7 @@
 
         function triggerPurgeOrbit() {
             if (!player || isDead) return;
+            vibrate(30);
             playSpatialSound(purgeSfx, player.x, player.y, 0.6);
             handleMassEjection(false, 0, 0, true);
         }
@@ -2000,13 +2510,38 @@
             const numToEject = purgeAll ? totalInOrbit : 5;
             if (numToEject === 0) return;
 
-            if (!purgeAll) playSpatialSound(boostSfx, ent.x, ent.y, 0.6);
+            if (!purgeAll) {
+                playSpatialSound(boostSfx, ent.x, ent.y, 0.6);
+                if (ent.isPlayer) vibrate(10);
+            }
             ent.isBurstingNow = true;
             let baseAngle;
             if (!purgeAll) {
                 if (ent.isPlayer) {
-                    const mouseWorld = screenToWorld(mouse.x, mouse.y);
-                    baseAngle = Math.atan2(mouseWorld.y - ent.y, mouseWorld.x - ent.x) + Math.PI;
+                    if (!isMobile && pcControlMode === 'keyboard') {
+                        let ktx = 0, kty = 0;
+                        if (keyboard[keybinds.up]) kty -= 1;
+                        if (keyboard[keybinds.down]) kty += 1;
+                        if (keyboard[keybinds.left]) ktx -= 1;
+                        if (keyboard[keybinds.right]) ktx += 1;
+                        
+                        if (ktx !== 0 || kty !== 0) {
+                            baseAngle = Math.atan2(kty, ktx) + Math.PI;
+                        } else {
+                            const mouseWorld = screenToWorld(mouse.x, mouse.y);
+                            baseAngle = Math.atan2(mouseWorld.y - ent.y, mouseWorld.x - ent.x) + Math.PI;
+                        }
+                    } else if (isMobile && mobileControlMode === 'joystick') {
+                        if (Math.hypot(joystick.x, joystick.y) > 1) {
+                            baseAngle = Math.atan2(joystick.y, joystick.x) + Math.PI;
+                        } else {
+                            const mouseWorld = screenToWorld(mouse.x, mouse.y);
+                            baseAngle = Math.atan2(mouseWorld.y - ent.y, mouseWorld.x - ent.x) + Math.PI;
+                        }
+                    } else {
+                        const mouseWorld = screenToWorld(mouse.x, mouse.y);
+                        baseAngle = Math.atan2(mouseWorld.y - ent.y, mouseWorld.x - ent.x) + Math.PI;
+                    }
                 } else {
                     baseAngle = Math.atan2(botTy, botTx);
                 }
@@ -2102,13 +2637,21 @@
                 if (deathTimer <= 0) {
                     bgMusic.pause(); bgMusic.currentTime = 0;
                     isPlaying = false;
-                    document.getElementById('mobile-controls').style.display = 'none';
+                    isDead = false;
+                    const mc = document.getElementById('mobile-controls');
+                    if (mc) mc.style.display = 'none';
                     const ov = document.getElementById('menu-overlay');
-                    ov.style.display = 'flex'; ov.style.opacity = '1'; ov.style.pointerEvents = 'auto';
+                    if (ov) {
+                        ov.style.display = 'flex'; 
+                        ov.style.opacity = '1'; 
+                        ov.style.pointerEvents = 'auto';
+                    }
+                    const respawnBtn = document.getElementById('btn-respawn');
+                    if (respawnBtn) respawnBtn.style.display = 'block';
                 }
             }
 
-            const isBurstingInput = isMobile ? mobileBurstDown : mouse.down;
+            const isBurstingInput = isMobile ? mobileBurstDown : (pcControlMode === 'keyboard' ? keyboard[keybinds.burst] : mouse.down);
             if (isBurstingInput && player && !isDead) handleMassEjection();
 
             entities.forEach(ent => {
@@ -2130,6 +2673,7 @@
                         if (dist < gWell) {
                             if (!ent.capturedBy || (ent.capturedBy.id !== host.id && host.mass > ent.capturedBy.mass * 1.1)) {
                                 ent.capturedBy = host;
+                                if (host.isPlayer) vibrate(5);
                                 ent.orbitDist = dist;
                                 ent.orbitAngle = Math.atan2(ent.y - host.y, ent.x - host.x);
                                 break;
@@ -2149,6 +2693,11 @@
                             ent.botClickTimer = 0;
                             playSpatialSound(thumpSfx, ent.x, ent.y, 0.2); // Lower volume for bot thumps
                         }
+                    } else if (pcControlMode === 'keyboard' && keyboard[keybinds.burst]) {
+                        // Keyboard burst also escapes
+                        ent.orbitDist += ESCAPE_STRENGTH;
+                        playSpatialSound(thumpSfx, ent.x, ent.y, 0.4);
+                        vibrate(15);
                     }
 
                     if (!entities.includes(ent.capturedBy) || ent.capturedBy.toBeRemoved || ent.mass >= ent.capturedBy.mass * 0.1) {
@@ -2183,6 +2732,11 @@
                     if (isMobile && mobileControlMode === 'joystick') {
                         tx = joystick.x;
                         ty = joystick.y;
+                    } else if (!isMobile && pcControlMode === 'keyboard') {
+                        if (keyboard[keybinds.up]) ty -= 1000;
+                        if (keyboard[keybinds.down]) ty += 1000;
+                        if (keyboard[keybinds.left]) tx -= 1000;
+                        if (keyboard[keybinds.right]) tx += 1000;
                     } else {
                         const mouseWorld = screenToWorld(mouse.x, mouse.y);
                         tx = mouseWorld.x - ent.x; ty = mouseWorld.y - ent.y;
@@ -2405,9 +2959,25 @@
             updateLeaderboard();
         }
 
+        function hideIngameUI() {
+            document.getElementById('hud').style.display = 'none';
+            document.getElementById('minimap').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('mobile-controls').style.display = 'none';
+            const igBtn = document.getElementById('ingame-settings-btn');
+            if (igBtn) igBtn.style.display = 'none';
+            const mmToggle = document.getElementById('minimap-toggle-btn');
+            if (mmToggle) mmToggle.style.display = 'none';
+            const igPanel = document.getElementById('ingame-settings-panel');
+            if (igPanel) igPanel.classList.remove('active');
+        }
+
         function triggerGameOver(killerName) {
             if (isDead) return;
-            isDead = true; deathTimer = DEATH_DURATION_FRAMES; 
+            isDead = true; 
+            vibrate([50, 50, 100]);
+            if (screenShakeEnabled) screenShakeAmount = 30;
+            deathTimer = DEATH_DURATION_FRAMES; 
 
             // Notify others of deletion
             if (peer && !peer.destroyed && player) {
@@ -2419,10 +2989,7 @@
                 }
             }
 
-            document.getElementById('hud').style.display = 'none';
-            document.getElementById('minimap').style.display = 'none';
-            document.getElementById('leaderboard').style.display = 'none';
-            document.getElementById('mobile-controls').style.display = 'none';
+            hideIngameUI();
             resetMultiplayerUI();
             if (isDuel) {
                 // Duel loss: clear "you lose" state
@@ -2454,10 +3021,7 @@
             bgMusic.pause(); 
             bgMusic.currentTime = 0;
 
-            document.getElementById('hud').style.display = 'none';
-            document.getElementById('minimap').style.display = 'none';
-            document.getElementById('leaderboard').style.display = 'none';
-            document.getElementById('mobile-controls').style.display = 'none';
+            hideIngameUI();
 
             // Bring back menu overlay with a clear victory message
             const ov = document.getElementById('menu-overlay');
@@ -2477,11 +3041,9 @@
             isDuel = false;
             bgMusic.pause(); 
             bgMusic.currentTime = 0;
+            if (screenShakeEnabled) screenShakeAmount = 25;
 
-            document.getElementById('hud').style.display = 'none';
-            document.getElementById('minimap').style.display = 'none';
-            document.getElementById('leaderboard').style.display = 'none';
-            document.getElementById('mobile-controls').style.display = 'none';
+            hideIngameUI();
 
             const ov = document.getElementById('menu-overlay');
             ov.style.display = 'flex';
@@ -2524,8 +3086,14 @@
                 ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
                 ctx.fillRect(screenX, screenY, star.size, star.size);
             });
+            let shakeOffX = 0, shakeOffY = 0;
+            if (screenShakeEnabled && screenShakeAmount > 0.1) {
+                shakeOffX = (Math.random() - 0.5) * screenShakeAmount;
+                shakeOffY = (Math.random() - 0.5) * screenShakeAmount;
+                screenShakeAmount *= 0.82;
+            }
             ctx.save();
-            ctx.translate(canvas.width/2, canvas.height/2);
+            ctx.translate(canvas.width/2 + shakeOffX, canvas.height/2 + shakeOffY);
             ctx.scale(camera.zoom, camera.zoom);
             ctx.translate(-camera.x, -camera.y);
             const buffer = 1000; 
@@ -2606,7 +3174,7 @@
             });
             ctx.restore();
 
-            if (!isDead) {
+            if (!isDead && showMinimap) {
                 mCtx.fillStyle = 'black'; mCtx.fillRect(0,0,150,150);
                 mCtx.strokeStyle = '#4f46e5'; mCtx.lineWidth = 2;
                 mCtx.beginPath(); mCtx.arc(75, 75, 70, 0, Math.PI*2); mCtx.stroke();
